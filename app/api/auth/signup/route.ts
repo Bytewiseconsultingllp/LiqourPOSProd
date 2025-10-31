@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { connectToDatabase } from '@/lib/mongoose';
 import Organization from '@/models/Organization';
+import PendingOrganization from '@/models/PendingOrganization';
 import User from '@/models/User';
 import { hashPassword, normalizeEmail, isValidEmail, validatePassword, generateVerificationToken } from '@/lib/auth';
 import { sendOrgVerificationEmail } from '@/lib/email';
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     await connectToDatabase();
 
-    // Check if organization with email already exists
+    // Check if organization with email already exists (verified)
     const existingOrg = await Organization.findOne({ email: normalizedEmail });
     if (existingOrg) {
       return NextResponse.json(
@@ -60,10 +61,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if subdomain is taken
+    // Check if there's already a pending verification for this email
+    const existingPending = await PendingOrganization.findOne({ email: normalizedEmail });
+    if (existingPending) {
+      return NextResponse.json(
+        { error: 'A verification email has already been sent to this address. Please check your email or wait for it to expire.' },
+        { status: 409 }
+      );
+    }
+
+    // Check if subdomain is taken (in both verified and pending)
     if (subdomain) {
       const existingSubdomain = await Organization.findOne({ subdomain });
-      if (existingSubdomain) {
+      const pendingSubdomain = await PendingOrganization.findOne({ subdomain });
+      
+      if (existingSubdomain || pendingSubdomain) {
         return NextResponse.json(
           { error: 'This subdomain is already taken' },
           { status: 409 }
@@ -71,32 +83,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
     // Generate verification token
     const verificationToken = generateVerificationToken();
     const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Create organization (inactive until verified)
-    const organization = await Organization.create({
-      name: organizationName,
+    // Create pending organization (will be converted to real org after verification)
+    const pendingOrg = await PendingOrganization.create({
+      organizationName,
       email: normalizedEmail,
+      adminName,
+      hashedPassword,
       subdomain,
-      isActive: false,
-      isVerified: false,
       verificationToken,
       verificationTokenExpires,
-    });
-
-    // Hash password
-    const hashedPassword = await hashPassword(password);
-
-    // Create admin user (also inactive until org is verified)
-    await User.create({
-      name: adminName,
-      email: normalizedEmail,
-      password: hashedPassword,
-      role: 'admin',
-      organizationId: organization._id.toString(),
-      isActive: false,
     });
 
     // Send verification email
@@ -114,8 +116,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: 'Organization created successfully. Please check your email to verify your account.',
-        organizationId: organization._id,
+        message: 'Verification email sent! Please check your email and click the verification link to complete your registration.',
+        pendingId: pendingOrg._id,
       },
       { status: 201 }
     );

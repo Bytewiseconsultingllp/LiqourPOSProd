@@ -78,27 +78,28 @@ export default function DashboardPage() {
 
         {/* Quick Links Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* User Management */}
-          {(user.role === 'admin' || user.role === 'manager') && (
-            <a
-              href="/dashboard/users"
-              className="block p-6 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
-                  <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
+          {/* Management Center - Featured Card */}
+          <a
+            href="/dashboard/management"
+            className="block p-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-4 bg-white bg-opacity-20 rounded-xl backdrop-blur-sm">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                User Management
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Manage team members and permissions
-              </p>
-            </a>
-          )}
+              <span className="px-3 py-1 bg-white bg-opacity-20 backdrop-blur-sm text-white text-xs font-semibold rounded-full">
+                NEW
+              </span>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              Management Center
+            </h3>
+            <p className="text-white text-opacity-90 text-sm">
+              Access all management tools in one place
+            </p>
+          </a>
 
           {/* Products */}
           <a

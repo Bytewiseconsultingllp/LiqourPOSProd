@@ -10,6 +10,8 @@ import {
   generateRefreshToken,
 } from '@/lib/auth';
 import { cacheUser, cacheOrganization } from '@/lib/cache';
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import { registerAllModels } from '@/lib/model-registry';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -34,6 +36,7 @@ export async function POST(request: NextRequest) {
     // Normalize email to lowercase
     const normalizedEmail = normalizeEmail(email);
 
+    // Connect to main database to find user and organization
     await connectToDatabase();
 
     // Find user by email (include password field)
@@ -70,6 +73,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Your organization is not active or verified' },
         { status: 403 }
+      );
+    }
+
+    // Initialize tenant database connection and register models
+    try {
+      // Register all model schemas (idempotent operation)
+      registerAllModels();
+      
+      // Create/get tenant-specific database connection
+      const tenantConnection = await getTenantConnection(organization._id.toString());
+      
+      console.log(`✅ Tenant database initialized for organization: ${organization.name}`);
+    } catch (dbError) {
+      console.error('Failed to initialize tenant database:', dbError);
+      return NextResponse.json(
+        { error: 'Failed to initialize organization database' },
+        { status: 500 }
       );
     }
 

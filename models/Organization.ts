@@ -8,8 +8,6 @@ export interface IOrganization {
   domain?: string;
   isActive: boolean;
   isVerified: boolean;
-  verificationToken?: string;
-  verificationTokenExpires?: Date;
   settings: {
     currency?: string;
     timezone?: string;
@@ -51,19 +49,11 @@ const OrganizationSchema = new Schema<IOrganization>(
     },
     isActive: {
       type: Boolean,
-      default: false, // Inactive until verified
+      default: true, // Active after email verification
     },
     isVerified: {
       type: Boolean,
-      default: false,
-    },
-    verificationToken: {
-      type: String,
-      select: false, // Don't return in queries by default
-    },
-    verificationTokenExpires: {
-      type: Date,
-      select: false,
+      default: true, // Verified after email verification
     },
     settings: {
       type: Schema.Types.Mixed,
