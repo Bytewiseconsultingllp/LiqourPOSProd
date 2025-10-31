@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ResetPasswordPage() {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
@@ -145,5 +148,17 @@ export default function ResetPasswordPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

@@ -28,7 +28,6 @@ const UserSchema = new Schema<IUser>(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
       validate: {
@@ -50,7 +49,6 @@ const UserSchema = new Schema<IUser>(
     organizationId: {
       type: String,
       required: true,
-      index: true,
     },
     isActive: {
       type: Boolean,
@@ -78,7 +76,7 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Indexes
-UserSchema.index({ email: 1 });
+UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ organizationId: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });

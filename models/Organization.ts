@@ -30,7 +30,6 @@ const OrganizationSchema = new Schema<IOrganization>(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
       validate: {
@@ -40,14 +39,12 @@ const OrganizationSchema = new Schema<IOrganization>(
     },
     subdomain: {
       type: String,
-      unique: true,
       sparse: true,
       lowercase: true,
       trim: true,
     },
     domain: {
       type: String,
-      unique: true,
       sparse: true,
       lowercase: true,
       trim: true,
@@ -83,9 +80,9 @@ const OrganizationSchema = new Schema<IOrganization>(
 );
 
 // Indexes
-OrganizationSchema.index({ email: 1 });
-OrganizationSchema.index({ subdomain: 1 });
-OrganizationSchema.index({ domain: 1 });
+OrganizationSchema.index({ email: 1 }, { unique: true });
+OrganizationSchema.index({ subdomain: 1 }, { unique: true, sparse: true });
+OrganizationSchema.index({ domain: 1 }, { unique: true, sparse: true });
 OrganizationSchema.index({ isActive: 1, isVerified: 1 });
 
 // This model is stored in the main database
