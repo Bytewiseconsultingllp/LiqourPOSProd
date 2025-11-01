@@ -1,25 +1,57 @@
 import mongoose, { Schema, Model, Connection } from 'mongoose';
 
-export interface IProduct {
+export interface IProductDetails {
   _id: string;
   name: string;
   description?: string;
-  sku: string;
+  imageUrl?: string;
+  sku?: string;
   barcode?: string;
+  brand: string;
   category: string;
-  price: number;
-  cost?: number;
-  stockQuantity: number;
-  minStockLevel?: number;
-  alcoholContent?: number;
-  volume?: number;
-  volumeUnit?: 'ml' | 'l' | 'oz' | 'gal';
+  
+  // Inventory
+  currentStock: number;
+  volumeML: number;
+  reorderLevel?: number;
+  morningStock?: number;
+  morningStockLastUpdatedDate?: Date;
+  eveningStock?: number;
+  
+  // Pricing
+  pricePerUnit: number;
+  purchasePricePerUnit?: any[];
+  
+  // Tax Info
+  taxInfo?: {
+    vat?: number;
+    tcs?: number;
+    gst?: number;
+    cess?: number;
+  };
+  
+  // Batch (Optional)
+  batchNumber?: string;
+  expiryDate?: Date;
+  
+  // Box Mapping (Optional)
+  bottlesPerCaret?: number;
+  noOfCarets?: number;
+  
+  // Status
   isActive: boolean;
+  location?: string;
+  
+  // Metadata
   createdAt: Date;
   updatedAt: Date;
+  organizationId?: string;
 }
 
-const ProductSchema = new Schema<IProduct>(
+// Alias for backward compatibility
+export type IProduct = IProductDetails;
+
+const ProductDetailsSchema = new Schema<IProductDetails>(
   {
     name: {
       type: String,
@@ -30,59 +62,93 @@ const ProductSchema = new Schema<IProduct>(
       type: String,
       trim: true,
     },
+    imageUrl: {
+      type: String,
+      trim: true,
+    },
     sku: {
       type: String,
-      required: true,
-      unique: true,
       trim: true,
+      sparse: true,
     },
     barcode: {
       type: String,
       trim: true,
       sparse: true,
     },
+    brand: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     category: {
       type: String,
       required: true,
       trim: true,
     },
-    price: {
+    // Inventory
+    currentStock: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    volumeML: {
+      type: Number,
+      required: true,
+    },
+    reorderLevel: {
+      type: Number,
+      default: 0,
+    },
+    morningStock: {
+      type: Number,
+    },
+    morningStockLastUpdatedDate: {
+      type: Date,
+    },
+    eveningStock: {
+      type: Number,
+    },
+    // Pricing
+    pricePerUnit: {
       type: Number,
       required: true,
       min: 0,
     },
-    cost: {
-      type: Number,
-      min: 0,
+    purchasePricePerUnit: {
+      type: [Schema.Types.Mixed],
     },
-    stockQuantity: {
-      type: Number,
-      required: true,
-      default: 0,
-      min: 0,
+    // Tax Info
+    taxInfo: {
+      vat: { type: Number },
+      tcs: { type: Number },
+      gst: { type: Number },
+      cess: { type: Number },
     },
-    minStockLevel: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    alcoholContent: {
-      type: Number,
-      min: 0,
-      max: 100,
-    },
-    volume: {
-      type: Number,
-      min: 0,
-    },
-    volumeUnit: {
+    // Batch
+    batchNumber: {
       type: String,
-      enum: ['ml', 'l', 'oz', 'gal'],
-      default: 'ml',
     },
+    expiryDate: {
+      type: Date,
+    },
+    // Box Mapping
+    bottlesPerCaret: {
+      type: Number,
+    },
+    noOfCarets: {
+      type: Number,
+    },
+    // Status
     isActive: {
       type: Boolean,
       default: true,
+    },
+    location: {
+      type: String,
+    },
+    organizationId: {
+      type: String,
     },
   },
   {
@@ -91,21 +157,32 @@ const ProductSchema = new Schema<IProduct>(
 );
 
 // Indexes
-ProductSchema.index({ sku: 1 });
-ProductSchema.index({ barcode: 1 });
-ProductSchema.index({ category: 1 });
-ProductSchema.index({ isActive: 1 });
-ProductSchema.index({ name: 'text', description: 'text' });
+ProductDetailsSchema.index({ sku: 1 });
+ProductDetailsSchema.index({ barcode: 1 });
+ProductDetailsSchema.index({ category: 1 });
+ProductDetailsSchema.index({ isActive: 1 });
+ProductDetailsSchema.index({ name: 'text', description: 'text' });
+ProductDetailsSchema.index({ organizationId: 1 });
 
 /**
- * Get Product model for a specific tenant connection
+ * Get ProductDetails model for a specific tenant connection
  * This ensures each tenant has their own products collection
+ * Note: Uses 'Product' as the collection name in MongoDB
  */
-export function getProductModel(connection: Connection): Model<IProduct> {
+export function getProductDetailsModel(connection: Connection): Model<IProductDetails> {
   if (connection.models.Product) {
-    return connection.models.Product as Model<IProduct>;
+    return connection.models.Product as Model<IProductDetails>;
   }
-  return connection.model<IProduct>('Product', ProductSchema);
+  return connection.model<IProductDetails>('Product', ProductDetailsSchema);
 }
 
-export default ProductSchema;
+/**
+ * @deprecated Use getProductDetailsModel instead
+ * Kept for backward compatibility
+ */
+export function getProductModel(connection: Connection): Model<IProductDetails> {
+  return getProductDetailsModel(connection);
+}
+
+export default ProductDetailsSchema;
+export { ProductDetailsSchema };

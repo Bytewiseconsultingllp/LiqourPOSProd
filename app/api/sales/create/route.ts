@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTenantConnection } from '@/lib/tenant-db';
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import { registerAllModels } from '@/lib/model-registry';
 import { getBillModel } from '@/models/Bill';
-import { getProductModel } from '@/models/Product';
+import { getProductDetailsModel } from '@/models/Product';
 import { getVendorStockModel } from '@/models/VendorStock';
 import { getAuthenticatedUser } from '@/lib/auth';
+
+interface AppliedPromotion {
+  promotionId: string;
+  promotionName: string;
+  promotionType: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+  discountAmount: number;
+  description?: string;
+}
 
 interface CartItem {
   productId: string;
@@ -15,6 +24,8 @@ interface CartItem {
   rate: number;
   subTotal: number;
   discountAmount: number;
+  itemDiscountAmount?: number; // Manual item discount
+  promotionDiscountAmount?: number; // Promotion discount
   finalAmount: number;
   vatAmount: number;
   tcsAmount: number;
@@ -35,6 +46,11 @@ interface CreateSaleRequest {
     transactionId?: string;
   };
   saleDate?: string;
+  // Discount breakdown
+  itemDiscountAmount?: number;
+  billDiscountAmount?: number;
+  promotionDiscountAmount?: number;
+  appliedPromotions?: AppliedPromotion[];
 }
 
 /**
@@ -168,7 +184,19 @@ export async function POST(request: NextRequest) {
     }
     
     const body: CreateSaleRequest = await request.json();
-    const { customerId, customerName, customerPhone, customerType, items, payment, saleDate } = body;
+    const { 
+      customerId, 
+      customerName, 
+      customerPhone, 
+      customerType, 
+      items, 
+      payment, 
+      saleDate,
+      itemDiscountAmount,
+      billDiscountAmount,
+      promotionDiscountAmount,
+      appliedPromotions
+    } = body;
     
     // Validation
     if (!customerName || !items || items.length === 0 || !payment) {
@@ -178,10 +206,13 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Ensure models are registered
+    registerAllModels();
+    
     // Get database connection
     const connection = await getTenantConnection(tenantId);
     const Bill = getBillModel(connection);
-    const Product = getProductModel(connection);
+    const ProductDetails = getTenantModel(connection, 'Product'); // Use ProductDetails with 'Product' collection
     const VendorStock = getVendorStockModel(connection);
     
     // Start transaction
@@ -204,13 +235,13 @@ export async function POST(request: NextRequest) {
     
     for (const item of items) {
       // 1. Check product stock
-      const product = await Product.findById(item.productId).session(session);
+      const product = await ProductDetails.findById(item.productId).session(session);
       if (!product) {
         throw new Error(`Product ${item.productName} not found`);
       }
       
-      // Check stock (try both fields for compatibility)
-      const productStock = (product as any).currentStock || (product as any).stockQuantity || 0;
+      // Check stock using currentStock field from ProductDetails schema
+      const productStock = (product as any).currentStock || 0;
       console.log(`📊 Product ${item.productName} stock: ${productStock}`);
       
       if (productStock < item.quantity) {
@@ -280,18 +311,10 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // 5. Deduct from product stock (try both fields for compatibility)
-      const updateFields: any = {};
-      if ((product as any).currentStock !== undefined) {
-        updateFields.currentStock = -item.quantity;
-      }
-      if ((product as any).stockQuantity !== undefined) {
-        updateFields.stockQuantity = -item.quantity;
-      }
-      
-      await Product.findByIdAndUpdate(
+      // 5. Deduct from product stock using currentStock field
+      await ProductDetails.findByIdAndUpdate(
         item.productId,
-        { $inc: updateFields },
+        { $inc: { currentStock: -item.quantity } },
         { session }
       );
       
@@ -304,6 +327,16 @@ export async function POST(request: NextRequest) {
     
     // Check if bill needs to be split (> 2.5L)
     const subBills = splitBillByVolume(processedItems, payment);
+    
+    // Filter and validate applied promotions
+    const validPromotions = (appliedPromotions || []).filter((promo: any) => 
+      promo.promotionId && 
+      promo.promotionName && 
+      promo.promotionType && 
+      promo.discountAmount !== undefined
+    );
+    
+    console.log('📊 Applied Promotions:', JSON.stringify(validPromotions, null, 2));
     
     // Create bill
     const bill = await Bill.create(
@@ -320,6 +353,10 @@ export async function POST(request: NextRequest) {
         totalVolumeML,
         subTotalAmount,
         totalDiscountAmount,
+        itemDiscountAmount: itemDiscountAmount || 0,
+        billDiscountAmount: billDiscountAmount || 0,
+        promotionDiscountAmount: promotionDiscountAmount || 0,
+        appliedPromotions: validPromotions,
         totalAmount,
         subBills: subBills || undefined,
         saleDate: saleDate ? new Date(saleDate) : new Date(),

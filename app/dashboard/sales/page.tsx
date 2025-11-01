@@ -185,25 +185,46 @@ const Index = () => {
     setCartItems((prev) => prev.filter((item) => item._id !== id));
   };
 
-  const handleCheckoutComplete = async (payment: Payment) => {
+  const handleCompleteSale = async (payment: Payment & {
+    itemDiscountAmount?: number;
+    billDiscountAmount?: number;
+    promotionDiscountAmount?: number;
+    appliedPromotions?: any[];
+  }) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const orgId = localStorage.getItem('organization') 
-        ? JSON.parse(localStorage.getItem('organization')!).id 
-        : 'default';
-
-      if (!token) {
-        alert('Please login to continue');
+      const token = localStorage.getItem("accessToken");
+      const organizationData = localStorage.getItem("organization");
+      
+      if (!token || !organizationData) {
+        alert("Please login again");
         return;
       }
 
+      const organization = JSON.parse(organizationData);
+      const orgId = organization._id || organization.id;
+
+      if (!selectedCustomer) {
+        alert("Please select a customer");
+        return;
+      }
+
+      // Calculate discount breakdown
+      const itemDiscounts = cartItems.reduce(
+        (sum, item) => sum + (item.itemDiscountAmount || 0),
+        0
+      );
+
       // Prepare sale data
       const saleData = {
-        customerId: selectedCustomer?._id !== 'walk-in' ? selectedCustomer?._id : undefined,
-        customerName: selectedCustomer?.name || 'Walk-in Customer',
+        customerId: selectedCustomer?._id !== "walk-in"
+          ? selectedCustomer?._id
+          : undefined,
+        customerName: selectedCustomer?.name || "Walk-in Customer",
         customerPhone: selectedCustomer?.contactInfo?.phone,
-        customerType: selectedCustomer?._id === 'walk-in' ? 'walk-in' : 'registered',
-        items: cartItems.map(item => ({
+        customerType: selectedCustomer?._id === "walk-in"
+          ? "walk-in"
+          : "registered",
+        items: cartItems.map((item) => ({
           productId: item.productId,
           productName: item.productName,
           brand: item.brand,
@@ -213,26 +234,32 @@ const Index = () => {
           rate: item.rate,
           subTotal: item.subTotal,
           discountAmount: item.discountAmount || 0,
+          itemDiscountAmount: item.itemDiscountAmount || 0,
+          promotionDiscountAmount: item.promoDiscountAmount || 0,
           finalAmount: item.finalAmount,
           vatAmount: item.vatAmount || 0,
           tcsAmount: item.tcsAmount || 0,
         })),
         payment: {
-          mode: payment.mode || 'Cash',
+          mode: payment.mode || "Cash",
           cashAmount: payment.cashAmount || payment.cash || 0,
           onlineAmount: payment.onlineAmount || payment.online || 0,
           creditAmount: payment.creditAmount || payment.credit || 0,
           totalAmount: payment.totalAmount || 0,
           transactionId: payment.transactionId,
         },
+        itemDiscountAmount: itemDiscounts,
+        billDiscountAmount: payment.billDiscountAmount || 0,
+        promotionDiscountAmount: payment.promotionDiscountAmount || 0,
+        appliedPromotions: payment.appliedPromotions || [],
       };
 
-      const response = await fetch('/api/sales/create', {
-        method: 'POST',
+      const response = await fetch("/api/sales/create", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'x-tenant-id': orgId,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "x-tenant-id": orgId,
         },
         body: JSON.stringify(saleData),
       });
@@ -269,11 +296,12 @@ const Index = () => {
     try {
       setSalesLoading(true);
       const token = localStorage.getItem('accessToken');
-      const orgId = localStorage.getItem('organization') 
-        ? JSON.parse(localStorage.getItem('organization')!).id 
-        : 'default';
-
-      if (!token) return;
+      const organizationData = localStorage.getItem('organization');
+      
+      if (!token || !organizationData) return;
+      
+      const organization = JSON.parse(organizationData);
+      const orgId = organization._id || organization.id;
 
       const response = await fetch('/api/sales?limit=10', {
         headers: {
@@ -293,10 +321,18 @@ const Index = () => {
     }
   };
 
-  // Fetch recent sales on mount
+  // Fetch recent sales on mount and auto-select walk-in customer
   useEffect(() => {
     fetchRecentSales();
-  }, []);
+    
+    // Auto-select walk-in customer if no customer is selected
+    if (!selectedCustomer && customers.length > 0) {
+      const walkInCustomer = customers.find(c => c._id === "walk-in");
+      if (walkInCustomer) {
+        setSelectedCustomer(walkInCustomer);
+      }
+    }
+  }, [customers]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -444,7 +480,7 @@ const Index = () => {
               customer={selectedCustomer}
               onRemoveItem={handleRemoveItem}
               onEditItem={handleEditItem}
-              onComplete={handleCheckoutComplete}
+              onComplete={handleCompleteSale}
             />
           </div>
         </div>

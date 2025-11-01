@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     // Get tenant connection
     const tenantConnection = await getTenantConnection(user.organizationId);
-    const Product = getTenantModel(tenantConnection, 'Product');
+    const ProductDetails = getTenantModel(tenantConnection, 'Product'); // Using ProductDetails type with 'Product' collection
 
     // Build query
     const query: any = { organizationId: user.organizationId };
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query
-    const products = await Product.find(query)
+    const products = await ProductDetails.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -143,10 +143,10 @@ export async function POST(request: NextRequest) {
 
     // Get tenant connection
     const tenantConnection = await getTenantConnection(user.organizationId);
-    const Product = getTenantModel(tenantConnection, 'Product');
+    const ProductDetails = getTenantModel(tenantConnection, 'Product'); // Using ProductDetails type with 'Product' collection
 
     // Check if SKU already exists
-    const existingProduct = await Product.findOne({
+    const existingProduct = await ProductDetails.findOne({
       sku: validation.data.sku,
       organizationId: user.organizationId,
     });
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create product
-    const product = await Product.create({
+    const product = await ProductDetails.create({
       ...validation.data,
       organizationId: user.organizationId,
       isActive: true,

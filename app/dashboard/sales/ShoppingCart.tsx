@@ -12,9 +12,11 @@ import {
   TabsTrigger,
   TabsContent,
 } from "../components/ui/tabs";
-import { Trash2, Edit, Receipt } from "lucide-react";
+import { Trash2, Edit, Receipt, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Customer } from "@/types/customer";
+import { PromotionsDisplay } from "./PromotionsDisplay";
+import { AppliedPromotion } from "@/types/promotion";
 
 interface ShoppingCartProps {
   items: CartItem[];
@@ -36,6 +38,9 @@ export function ShoppingCart({
   const [cashAmount, setCashAmount] = useState(0);
   const [onlineAmount, setOnlineAmount] = useState(0);
   const [creditAmount, setCreditAmount] = useState(0);
+  const [promotionDiscount, setPromotionDiscount] = useState(0);
+  const [appliedPromotions, setAppliedPromotions] = useState<AppliedPromotion[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const totalBottles = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = items.reduce(
@@ -46,9 +51,21 @@ export function ShoppingCart({
     (sum, item) => sum + (item.itemDiscountAmount || 0),
     0
   );
-  const totalBeforeRounding = subtotal - itemDiscounts - billDiscount;
+  const totalBeforeRounding = subtotal - itemDiscounts - billDiscount - promotionDiscount;
   const grandTotal = Math.round(totalBeforeRounding);
   const roundOffAmount = grandTotal - totalBeforeRounding;
+
+  const handlePromotionsApplied = (promotions: AppliedPromotion[], totalDiscount: number) => {
+    // Filter out invalid promotions (missing required fields)
+    const validPromotions = promotions.filter(promo => 
+      promo.promotionId && 
+      promo.promotionName && 
+      promo.promotionType && 
+      promo.discountAmount !== undefined
+    );
+    setAppliedPromotions(validPromotions);
+    setPromotionDiscount(totalDiscount);
+  };
 
   useEffect(() => {
     if (paymentMethod === "cash") {
@@ -66,7 +83,7 @@ export function ShoppingCart({
     setPaymentMethod(value as "cash" | "credit");
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!customer) {
       toast.error("Please select a customer");
       return;
@@ -83,24 +100,48 @@ export function ShoppingCart({
       return;
     }
 
-    if (paymentMethod === "credit" && customer._id === "walk-in") {
+    if (paymentMethod === "credit" && (!customer || customer._id === "walk-in")) {
       toast.error("Cannot process credit payment for walk-in customer");
       return;
     }
 
-    const payment: Payment = {
-      method: paymentMethod,
-      cash: cashAmount,
-      online: onlineAmount,
-      credit: creditAmount,
-    };
+    setIsProcessing(true);
+    try {
+      // Map payment method to proper mode
+      const paymentMode = paymentMethod === 'cash' ? 'Cash' : 
+                         paymentMethod === 'credit' ? 'Credit' : 
+                         paymentMethod === 'online' ? 'Online' : 'Mixed';
 
-    onComplete(payment);
-    toast.success("Sale completed successfully!");
+      const payment: Payment & {
+        billDiscountAmount?: number;
+        promotionDiscountAmount?: number;
+        appliedPromotions?: any[];
+      } = {
+        mode: paymentMode,
+        method: paymentMethod,
+        cashAmount: cashAmount,
+        cash: cashAmount,
+        onlineAmount: onlineAmount,
+        online: onlineAmount,
+        creditAmount: creditAmount,
+        credit: creditAmount,
+        totalAmount: grandTotal,
+        billDiscountAmount: billDiscount,
+        promotionDiscountAmount: promotionDiscount,
+        appliedPromotions: appliedPromotions,
+      };
 
-    // Reset payment fields
-    setBillDiscount(0);
-    setPaymentMethod("cash");
+      await onComplete(payment);
+      toast.success("Sale completed successfully!");
+
+      // Reset payment fields
+      setBillDiscount(0);
+      setPaymentMethod("cash");
+    } catch (error) {
+      // Error handling is done in parent component
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -182,8 +223,15 @@ export function ShoppingCart({
 
           <Separator className="my-4" />
 
+          {/* Active Promotions */}
+          <PromotionsDisplay
+            items={items}
+            totalAmount={subtotal}
+            onPromotionsApplied={handlePromotionsApplied}
+          />
+
           {/* Bill Summary */}
-          <div className="space-y-2">
+          <div className="space-y-2 mt-4">
             <h3 className="font-semibold text-sm">Bill Summary</h3>
 
             <div className="space-y-2 text-sm">
@@ -199,6 +247,13 @@ export function ShoppingCart({
                 <div className="flex justify-between text-destructive">
                   <span>Item Discounts:</span>
                   <span>-₹{itemDiscounts.toFixed(2)}</span>
+                </div>
+              )}
+
+              {promotionDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Promotion Discount:</span>
+                  <span>-₹{promotionDiscount.toFixed(2)}</span>
                 </div>
               )}
 
@@ -255,7 +310,12 @@ export function ShoppingCart({
             >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="cash">Cash</TabsTrigger>
-                <TabsTrigger value="credit">Credit</TabsTrigger>
+                <TabsTrigger 
+                  value="credit" 
+                  disabled={!customer || customer._id === "walk-in"}
+                >
+                  Credit {(!customer || customer._id === "walk-in") && "(Registered Only)"}
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="cash" className="space-y-3 mt-3">
@@ -362,10 +422,19 @@ export function ShoppingCart({
             className="w-full gap-2 mt-4"
             size="lg"
             onClick={handleComplete}
-            disabled={!customer}
+            disabled={!customer || isProcessing}
           >
-            <Receipt className="h-5 w-5" />
-            Complete Sale
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Receipt className="h-5 w-5" />
+                Complete Sale
+              </>
+            )}
           </Button>
         </>
       )}

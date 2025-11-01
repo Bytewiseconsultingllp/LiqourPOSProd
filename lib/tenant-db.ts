@@ -146,14 +146,21 @@ export function getConnectionStats() {
 }
 
 // Cleanup on process termination
-if (typeof process !== 'undefined') {
-  process.on('SIGINT', async () => {
+// Only register cleanup handlers in Node.js environment (not in Edge runtime)
+if (typeof process !== 'undefined' && process.on) {
+  const cleanup = async () => {
     await closeAllTenantConnections();
     process.exit(0);
-  });
+  };
 
-  process.on('SIGTERM', async () => {
-    await closeAllTenantConnections();
-    process.exit(0);
-  });
+  // Check if we're not in a serverless/edge environment
+  if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    try {
+      process.on('SIGINT', cleanup);
+      process.on('SIGTERM', cleanup);
+    } catch (error) {
+      // Ignore errors in environments that don't support process events
+      console.log('⚠️  Process event handlers not available in this environment');
+    }
+  }
 }

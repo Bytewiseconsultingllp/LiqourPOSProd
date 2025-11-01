@@ -1,5 +1,13 @@
 import mongoose, { Schema, Model, Connection } from 'mongoose';
 
+export interface IAppliedPromotion {
+  promotionId: string;
+  promotionName: string;
+  promotionType: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+  discountAmount: number;
+  description?: string;
+}
+
 export interface IBillItem {
   productId: string;
   vendorId: string;
@@ -11,6 +19,8 @@ export interface IBillItem {
   rate: number;
   subTotal: number;
   discountAmount: number;
+  itemDiscountAmount?: number; // Manual item-level discount
+  promotionDiscountAmount?: number; // Promotion-based discount
   finalAmount: number;
   vatAmount: number;
   tcsAmount: number;
@@ -41,6 +51,10 @@ export interface IBill {
   totalVolumeML: number;
   subTotalAmount: number;
   totalDiscountAmount: number;
+  itemDiscountAmount?: number; // Manual item discounts total
+  billDiscountAmount?: number; // Bill-level discount
+  promotionDiscountAmount?: number; // Total promotion discounts
+  appliedPromotions?: IAppliedPromotion[]; // List of applied promotions
   totalAmount: number;
   subBills?: ISubBill[];
   saleDate: Date;
@@ -57,6 +71,29 @@ export interface IBill {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const AppliedPromotionSchema = new Schema({
+  promotionId: {
+    type: String,
+    required: true,
+  },
+  promotionName: {
+    type: String,
+    required: true,
+  },
+  promotionType: {
+    type: String,
+    enum: ['percentage', 'fixed', 'buy_x_get_y', 'bundle'],
+    required: true,
+  },
+  discountAmount: {
+    type: Number,
+    required: true,
+  },
+  description: {
+    type: String,
+  },
+}, { _id: false });
 
 const BillItemSchema = new Schema({
   productId: {
@@ -97,6 +134,14 @@ const BillItemSchema = new Schema({
     required: true,
   },
   discountAmount: {
+    type: Number,
+    default: 0,
+  },
+  itemDiscountAmount: {
+    type: Number,
+    default: 0,
+  },
+  promotionDiscountAmount: {
     type: Number,
     default: 0,
   },
@@ -194,6 +239,19 @@ const BillSchema = new Schema<IBill>(
       type: Number,
       default: 0,
     },
+    itemDiscountAmount: {
+      type: Number,
+      default: 0,
+    },
+    billDiscountAmount: {
+      type: Number,
+      default: 0,
+    },
+    promotionDiscountAmount: {
+      type: Number,
+      default: 0,
+    },
+    appliedPromotions: [AppliedPromotionSchema],
     totalAmount: {
       type: Number,
       required: true,

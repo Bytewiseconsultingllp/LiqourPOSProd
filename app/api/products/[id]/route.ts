@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection } from '@/lib/mongoose';
-import { getProductModel } from '@/models/Product';
+import { getProductDetailsModel, IProductDetails } from '@/models/Product';
 
 export async function GET(
   request: NextRequest,
@@ -17,9 +17,10 @@ export async function GET(
     }
 
     const connection = await getTenantConnection(tenantId);
-    const Product = getProductModel(connection.connection);
+    // Using ProductDetails type with 'Product' collection name
+    const ProductDetails = getProductDetailsModel(connection.connection);
 
-    const product = await Product.findById(params.id).lean();
+    const product = await ProductDetails.findById(params.id).lean();
 
     if (!product) {
       return NextResponse.json(
@@ -57,9 +58,10 @@ export async function PUT(
 
     const body = await request.json();
     const connection = await getTenantConnection(tenantId);
-    const Product = getProductModel(connection.connection);
+    // Using ProductDetails type with 'Product' collection name
+    const ProductDetails = getProductDetailsModel(connection.connection);
 
-    const product = await Product.findByIdAndUpdate(
+    const product = await ProductDetails.findByIdAndUpdate(
       params.id,
       body,
       { new: true, runValidators: true }
@@ -100,10 +102,11 @@ export async function DELETE(
     }
 
     const connection = await getTenantConnection(tenantId);
-    const Product = getProductModel(connection.connection);
+    // Using ProductDetails type with 'Product' collection name
+    const ProductDetails = getProductDetailsModel(connection.connection);
 
     // Soft delete by setting isActive to false
-    const product = await Product.findByIdAndUpdate(
+    const product = await ProductDetails.findByIdAndUpdate(
       params.id,
       { isActive: false },
       { new: true }

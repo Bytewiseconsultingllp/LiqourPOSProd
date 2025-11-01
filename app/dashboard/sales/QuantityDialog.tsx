@@ -77,14 +77,34 @@ export function QuantityDialog({
               <Input
                 type="number"
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string for backspace/delete
+                  if (value === '' || value === '0') {
+                    setQuantity(0);
+                  } else {
+                    const parsed = parseInt(value);
+                    if (!isNaN(parsed) && parsed >= 0) {
+                      setQuantity(parsed);
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  // Ensure minimum of 1 when user leaves the field
+                  if (quantity === 0 || isNaN(quantity)) {
+                    setQuantity(1);
+                  }
+                }}
                 className="text-center"
                 min="1"
               />
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setQuantity(Math.min(product.currentStock, quantity + 1))}
+                onClick={() => {
+                  const newQty = (quantity || 0) + 1;
+                  setQuantity(Math.min(product.currentStock, newQty));
+                }}
               >
                 <Plus className="h-4 w-4" />
               </Button>

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { extractTenantId, isValidTenantId, getDefaultTenantId } from './lib/tenant-context';
+import { registerAllModels } from './lib/model-registry';
+
+// Register all models once when middleware is loaded
+registerAllModels();
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

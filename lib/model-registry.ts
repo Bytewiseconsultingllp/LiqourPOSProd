@@ -88,9 +88,9 @@ const TaxInfoSchema = new Schema({
 }, { _id: false });
 
 /**
- * Product Model Schema (based on ProductDetails interface)
+ * ProductDetails Model Schema (based on ProductDetails interface)
  */
-const ProductSchema = new Schema(
+const ProductDetailsSchema = new Schema(
   {
     // Basic Info
     name: {
@@ -205,13 +205,13 @@ const ProductSchema = new Schema(
   }
 );
 
-// Indexes for Product
-ProductSchema.index({ organizationId: 1, sku: 1 });
-ProductSchema.index({ organizationId: 1, barcode: 1 }, { sparse: true });
-ProductSchema.index({ organizationId: 1, category: 1 });
-ProductSchema.index({ organizationId: 1, brand: 1 });
-ProductSchema.index({ organizationId: 1, name: 1 });
-ProductSchema.index({ name: 'text', description: 'text', brand: 'text' });
+// Indexes for ProductDetails
+ProductDetailsSchema.index({ organizationId: 1, sku: 1 });
+ProductDetailsSchema.index({ organizationId: 1, barcode: 1 }, { sparse: true });
+ProductDetailsSchema.index({ organizationId: 1, category: 1 });
+ProductDetailsSchema.index({ organizationId: 1, brand: 1 });
+ProductDetailsSchema.index({ organizationId: 1, name: 1 });
+ProductDetailsSchema.index({ name: 'text', description: 'text', brand: 'text' });
 
 /**
  * Sale Model Schema
@@ -511,20 +511,32 @@ VendorSchema.index({ organizationId: 1, name: 1 });
 VendorSchema.index({ organizationId: 1, vendorPriority: -1 });
 VendorSchema.index({ organizationId: 1, isActive: 1 });
 
+// Track if models have been registered
+let modelsRegistered = false;
+
 /**
  * Register all schemas
  * This should be called once at application startup
+ * Safe to call multiple times - will only register once
  */
 export function registerAllModels() {
+  if (modelsRegistered) {
+    return; // Already registered, skip
+  }
+
   registerModelSchema('User', UserSchema);
-  registerModelSchema('Product', ProductSchema);
+  registerModelSchema('Product', ProductDetailsSchema); // ProductDetails schema registered as 'Product' in DB
   registerModelSchema('Sale', SaleSchema);
   registerModelSchema('InventoryTransaction', InventoryTransactionSchema);
   registerModelSchema('Customer', CustomerSchema);
   registerModelSchema('Vendor', VendorSchema);
   
+  modelsRegistered = true;
   console.log('✅ All model schemas registered');
 }
 
 // Export schemas for type definitions
-export { UserSchema, ProductSchema, SaleSchema, InventoryTransactionSchema, CustomerSchema, VendorSchema };
+export { UserSchema, ProductDetailsSchema, ProductDetailsSchema as ProductSchema, SaleSchema, InventoryTransactionSchema, CustomerSchema, VendorSchema };
+
+// Auto-register models when this module is imported
+registerAllModels();
