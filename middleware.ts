@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { extractTenantId, isValidTenantId, getDefaultTenantId } from './lib/tenant-context';
-import { registerAllModels } from './lib/model-registry';
 
-// Register all models once when middleware is loaded
-registerAllModels();
+// Note: Cannot register models here because middleware runs in Edge Runtime
+// Models are registered automatically when model-registry.ts is imported in API routes
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
