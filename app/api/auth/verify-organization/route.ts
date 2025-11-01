@@ -5,6 +5,8 @@ import PendingOrganization from '@/models/PendingOrganization';
 import User from '@/models/User';
 import { sendWelcomeEmail } from '@/lib/email';
 import { invalidateOrganizationCache } from '@/lib/cache';
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import { registerAllModels } from '@/lib/model-registry';
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,15 +59,49 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create admin user
+    // Create org admin user in MAIN database
     const adminUser = await User.create({
       name: pendingOrg.adminName,
       email: pendingOrg.email,
       password: pendingOrg.hashedPassword,
-      role: 'admin',
+      role: 'org_admin', // Changed from 'admin' to 'org_admin'
       organizationId: organization._id.toString(),
       isActive: true,
     });
+
+    console.log(`✅ Org admin created in main database: ${adminUser.email}`);
+
+    // Create org admin user in TENANT database
+    try {
+      // Register all model schemas
+      registerAllModels();
+      
+      // Get tenant connection
+      const tenantConnection = await getTenantConnection(organization._id.toString());
+      const TenantUser = getTenantModel(tenantConnection, 'User');
+
+      // Create org admin in tenant database
+      await TenantUser.create({
+        name: pendingOrg.adminName,
+        email: pendingOrg.email,
+        password: pendingOrg.hashedPassword,
+        role: 'org_admin',
+        organizationId: organization._id.toString(),
+        isActive: true,
+      });
+
+      console.log(`✅ Org admin created in tenant database: ${adminUser.email}`);
+    } catch (tenantError) {
+      console.error('Failed to create org admin in tenant database:', tenantError);
+      // Rollback: Delete organization and admin user
+      await User.findByIdAndDelete(adminUser._id);
+      await Organization.findByIdAndDelete(organization._id);
+      
+      return NextResponse.json(
+        { error: 'Failed to initialize organization database' },
+        { status: 500 }
+      );
+    }
 
     // Delete pending organization
     await PendingOrganization.deleteOne({ _id: pendingOrg._id });

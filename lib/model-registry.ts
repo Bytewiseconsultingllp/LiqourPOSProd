@@ -28,8 +28,8 @@ const UserSchema = new Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'manager', 'staff'],
-      default: 'staff',
+      enum: ['org_admin', 'admin', 'manager', 'sales', 'accountant', 'tax_officer'],
+      default: 'sales',
     },
     organizationId: {
       type: String,

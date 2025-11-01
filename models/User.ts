@@ -1,6 +1,6 @@
 import mongoose, { Schema, Model, Connection } from 'mongoose';
 
-export type UserRole = 'admin' | 'manager' | 'staff';
+export type UserRole = 'org_admin' | 'admin' | 'manager' | 'sales' | 'accountant' | 'tax_officer';
 
 export interface IUser {
   _id: string;
@@ -42,8 +42,8 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['admin', 'manager', 'staff'],
-      default: 'staff',
+      enum: ['org_admin', 'admin', 'manager', 'sales', 'accountant', 'tax_officer'],
+      default: 'sales',
       required: true,
     },
     organizationId: {
@@ -103,7 +103,7 @@ export async function getUsersByOrganization(organizationId: string): Promise<IU
 export async function getOrganizationAdmins(organizationId: string): Promise<IUser[]> {
   return User.find({ 
     organizationId, 
-    role: 'admin', 
+    role: { $in: ['org_admin', 'admin'] }, 
     isActive: true 
   }).select('email name');
 }
