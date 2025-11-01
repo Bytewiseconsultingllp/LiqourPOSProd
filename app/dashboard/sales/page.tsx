@@ -336,23 +336,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header
-        className="relative bg-primary text-primary-foreground py-8 px-6 shadow-lg"
-        style={{
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${heroBg})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold mb-2">Liquor POS</h1>
-          <p className="text-primary-foreground/90">
-            Professional Point of Sale System
-          </p>
-        </div>
-      </header>
-
       <div className="max-w-7xl mx-auto p-6">
         {/* Customer Selection */}
         <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">

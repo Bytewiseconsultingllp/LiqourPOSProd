@@ -3,20 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  Home, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  FileText, 
-  Settings, 
-  LogOut, 
-  Menu, 
+import {
+  Home,
+  ShoppingCart,
+  Package,
+  Users,
+  FileText,
+  Settings,
+  LogOut,
+  Menu,
   X,
   ChevronDown,
   Building2,
   TrendingUp,
-  ShoppingBag
+  ShoppingBag,
+  Loader2,
+  Tag,
+  UserCircle
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -27,12 +30,13 @@ export default function Navbar() {
   const [managementMenuOpen, setManagementMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     // Load user and organization from localStorage
     const userData = localStorage.getItem('user');
     const orgData = localStorage.getItem('organization');
-    
+
     if (userData) {
       try {
         setUser(JSON.parse(userData));
@@ -40,7 +44,7 @@ export default function Navbar() {
         console.error('Error parsing user data:', e);
       }
     }
-    
+
     if (orgData) {
       try {
         setOrganization(JSON.parse(orgData));
@@ -50,10 +54,24 @@ export default function Navbar() {
     }
   }, []);
 
-  const handleLogout = () => {
+  // Reset logout state when navigating to login/register pages
+  useEffect(() => {
+    if (pathname === '/login' || pathname === '/register' || pathname === '/reset-password') {
+      setIsLoggingOut(false);
+    }
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    // Simulate a small delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 800));
+
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.removeItem('organization');
+
     router.push('/login');
   };
 
@@ -73,12 +91,18 @@ export default function Navbar() {
       icon: TrendingUp,
     },
     {
+      name: 'Purchases',
+      href: '/dashboard/purchases',
+      icon: ShoppingBag,
+    },
+    {
       name: 'Management',
       icon: Settings,
       submenu: [
+        { name: 'Customers', href: '/dashboard/management/customers', icon: Users },
         { name: 'Products', href: '/dashboard/management/products', icon: Package },
+        { name: 'Promotions and offers', href: '/dashboard/management/promotions', icon: ShoppingBag },
         { name: 'Vendors', href: '/dashboard/management/vendors', icon: Building2 },
-        { name: 'Purchases', href: '/dashboard/management/purchases', icon: ShoppingBag },
         { name: 'Users', href: '/dashboard/management/users', icon: Users },
       ],
     },
@@ -120,17 +144,16 @@ export default function Navbar() {
                 <div key={link.name} className="relative">
                   <button
                     onClick={() => setManagementMenuOpen(!managementMenuOpen)}
-                    className={`flex items-center space-x-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      pathname?.startsWith('/dashboard/management')
+                    className={`flex items-center space-x-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${pathname?.startsWith('/dashboard/management')
                         ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
+                      }`}
                   >
                     <link.icon className="w-4 h-4" />
                     <span>{link.name}</span>
                     <ChevronDown className="w-4 h-4" />
                   </button>
-                  
+
                   {managementMenuOpen && (
                     <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2">
                       {link.submenu.map((sublink) => (
@@ -138,11 +161,10 @@ export default function Navbar() {
                           key={sublink.href}
                           href={sublink.href}
                           onClick={() => setManagementMenuOpen(false)}
-                          className={`flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${
-                            isActive(sublink.href)
+                          className={`flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${isActive(sublink.href)
                               ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
                               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                          }`}
+                            }`}
                         >
                           <sublink.icon className="w-4 h-4" />
                           <span>{sublink.name}</span>
@@ -155,11 +177,10 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive(link.href)
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(link.href)
                       ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <link.icon className="w-4 h-4" />
                   <span>{link.name}</span>
@@ -202,7 +223,7 @@ export default function Navbar() {
                       {user?.email}
                     </p>
                   </div>
-                  
+
                   <Link
                     href="/dashboard/profile"
                     onClick={() => setUserMenuOpen(false)}
@@ -211,7 +232,7 @@ export default function Navbar() {
                     <Users className="w-4 h-4" />
                     <span>Profile</span>
                   </Link>
-                  
+
                   <Link
                     href="/dashboard/settings"
                     onClick={() => setUserMenuOpen(false)}
@@ -220,9 +241,9 @@ export default function Navbar() {
                     <Settings className="w-4 h-4" />
                     <span>Settings</span>
                   </Link>
-                  
+
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                  
+
                   <button
                     onClick={handleLogout}
                     className="flex items-center space-x-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-full"
@@ -262,7 +283,7 @@ export default function Navbar() {
                     </div>
                     <ChevronDown className={`w-4 h-4 transition-transform ${managementMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  
+
                   {managementMenuOpen && (
                     <div className="ml-4 mt-2 space-y-1">
                       {link.submenu.map((sublink) => (
@@ -273,11 +294,10 @@ export default function Navbar() {
                             setIsOpen(false);
                             setManagementMenuOpen(false);
                           }}
-                          className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${
-                            isActive(sublink.href)
+                          className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${isActive(sublink.href)
                               ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
                               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                          }`}
+                            }`}
                         >
                           <sublink.icon className="w-4 h-4" />
                           <span>{sublink.name}</span>
@@ -291,17 +311,27 @@ export default function Navbar() {
                   key={link.name}
                   href={link.href}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${
-                    isActive(link.href)
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${isActive(link.href)
                       ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <link.icon className="w-5 h-5" />
                   <span className="font-medium">{link.name}</span>
                 </Link>
               )
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Logout Loader */}
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-16 h-16 text-white animate-spin mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Logging Out...</h2>
+            <p className="text-blue-100">Please wait while we sign you out</p>
           </div>
         </div>
       )}

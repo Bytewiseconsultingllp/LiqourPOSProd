@@ -13,11 +13,11 @@ import { RecentPurchasesTable } from "./RecentPurchasesTable";
 import { Purchase, PurchaseItem } from "@/types/purchase";
 import { ProductDetails } from "@/types/product";
 import { Vendor } from "@/types/vendor";
-import { useToast } from "../../hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Label } from "../../components/ui/label";
-import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
+import { useToast } from "../hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Label } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
 
 const purchaseSchema = z.object({
   vendorId: z.string().min(1, "Please select a vendor"),
