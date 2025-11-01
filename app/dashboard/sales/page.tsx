@@ -1,403 +1,538 @@
-'use client';
+"use client";
+import heroBg from "@/assets/hero-bg.jpg";
+import { useCustomers } from "@/lib/hooks/useCustomers";
+import { useProducts } from "@/lib/hooks/useProducts";
+import { Customer } from "@/types/customer";
+import { CartItem, Payment, ProductDetails } from "@/types/product";
+import {
+  AlertCircle,
+  CreditCard,
+  Loader2,
+  Phone,
+  User,
+  Wallet,
+} from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { CreditPaymentDialog } from "./CreditPaymentDialog";
+import { CustomerSelector } from "./CustomerSelector";
+import { ProductCard } from "./ProductCard";
+import { ProductFilters } from "./ProductFilters";
+import { ProductSearch } from "./ProductSearch";
+import { QuantityDialog } from "./QuantityDialog";
+import { ShoppingCart } from "./ShoppingCart";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+const Index = () => {
+  // Fetch products and customers from API
+  const {
+    products,
+    loading: productsLoading,
+    error: productsError,
+    refetch: refetchProducts,
+  } = useProducts({ isActive: true });
+  const {
+    customers,
+    loading: customersLoading,
+    error: customersError,
+  } = useCustomers({ isActive: true });
 
-interface Product {
-  _id: string;
-  name: string;
-  sku: string;
-  price: number;
-  stock: number;
-  unit: string;
-  category: string;
-}
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null
+  );
+  const [selectedVolumes, setSelectedVolumes] = useState<number[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ProductDetails | null>(
+    null
+  );
+  const [editingItem, setEditingItem] = useState<CartItem | null>(null);
+  const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
+  const [creditPaymentDialogOpen, setCreditPaymentDialogOpen] = useState(false);
+  const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
 
-interface CartItem {
-  product: Product;
-  quantity: number;
-  subtotal: number;
-}
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const volumeMatch =
+        selectedVolumes.length === 0 ||
+        selectedVolumes.includes(product.volumeML);
+      const categoryMatch =
+        selectedCategories.length === 0 ||
+        selectedCategories.includes(product.category);
+      return volumeMatch && categoryMatch;
+    });
+  }, [products, selectedVolumes, selectedCategories]);
 
-export default function SalesEntryPage() {
-  const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
-  const [processing, setProcessing] = useState(false);
+  const handleVolumeToggle = (volume: number) => {
+    setSelectedVolumes((prev) =>
+      prev.includes(volume)
+        ? prev.filter((v) => v !== volume)
+        : [...prev, volume]
+    );
+  };
 
-  useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) {
-      router.push('/login');
-      return;
-    }
-    fetchProducts(accessToken);
-  }, [router]);
+  const handleCategoryToggle = (category: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(category)
+        ? prev.filter((c) => c !== category)
+        : [...prev, category]
+    );
+  };
 
-  const fetchProducts = async (token: string) => {
-    try {
-      const response = await fetch('/api/products', {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'x-tenant-id': localStorage.getItem('organization') ? JSON.parse(localStorage.getItem('organization')!).id : 'default'
-        },
-      });
+  const handleClearFilters = () => {
+    setSelectedVolumes([]);
+    setSelectedCategories([]);
+  };
 
-      if (!response.ok) throw new Error('Failed to fetch products');
+  const handleProductSelect = (product: ProductDetails) => {
+    setSelectedProduct(product);
+    setEditingItem(null);
+    setQuantityDialogOpen(true);
+  };
 
-      const data = await response.json();
-      setProducts(data.data?.filter((p: Product) => p.stock > 0) || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  const handleEditItem = (item: CartItem) => {
+    // Convert CartItem back to ProductDetails structure for editing
+    const productDetails: ProductDetails = {
+      _id: item.productId,
+      name: item.productName,
+      brand: item.brand,
+      category: item.category,
+      volumeML: item.volumePerUnitML,
+      pricePerUnit: item.rate,
+      currentStock: 0, // Not available in CartItem
+      taxInfo: {
+        vat: item.vatAmount,
+        tcs: item.tcsAmount,
+      },
+      createdAt: new Date().toISOString(),
+      purchasePricePerUnit: [],
+    };
+
+    setSelectedProduct(productDetails);
+    setEditingItem(item);
+    setQuantityDialogOpen(true);
+  };
+
+  const handleQuantityConfirm = (quantity: number, discount: number) => {
+    if (!selectedProduct) return;
+
+    if (editingItem) {
+      setCartItems((prev) =>
+        prev.map((item) => {
+          if (item._id === editingItem._id) {
+            const subTotal = item.rate * quantity;
+            const discountAmount = discount || 0;
+            const finalAmount = subTotal - discountAmount;
+            return { ...item, quantity, discountAmount, subTotal, finalAmount };
+          }
+          return item;
+        })
+      );
+    } else {
+      const existingItem = cartItems.find(
+        (item) => item._id === selectedProduct._id
+      );
+      if (existingItem) {
+        setCartItems((prev) =>
+          prev.map((item) => {
+            if (item._id === selectedProduct._id) {
+              const newQuantity = item.quantity + quantity;
+              const subTotal = item.rate * newQuantity;
+              const discountAmount = discount || 0;
+              const finalAmount = subTotal - discountAmount;
+              return {
+                ...item,
+                quantity: newQuantity,
+                discountAmount,
+                subTotal,
+                finalAmount,
+              };
+            }
+            return item;
+          })
+        );
+      } else {
+        const subTotal = selectedProduct.pricePerUnit * quantity;
+        const discountAmount = discount || 0;
+        const finalAmount = subTotal - discountAmount;
+
+        const newCartItem: CartItem = {
+          _id: selectedProduct._id,
+          productId: selectedProduct._id,
+          vendorId: "", // TODO: Add vendor selection logic
+          billId: 0, // Will be set when bill is created
+          productName: selectedProduct.name,
+          brand: selectedProduct.brand,
+          category: selectedProduct.category,
+          quantity,
+          volumePerUnitML: selectedProduct.volumeML,
+          rate: selectedProduct.pricePerUnit,
+          subTotal,
+          discountAmount,
+          finalAmount,
+          vatAmount: selectedProduct.taxInfo?.vat,
+          tcsAmount: selectedProduct.taxInfo?.tcs,
+        };
+
+        setCartItems((prev) => [...prev, newCartItem]);
+      }
     }
   };
 
-  const addToCart = (product: Product) => {
-    const existingItem = cart.find(item => item.product._id === product._id);
-    
-    if (existingItem) {
-      if (existingItem.quantity >= product.stock) {
-        setError(`Only ${product.stock} ${product.unit}(s) available`);
-        setTimeout(() => setError(''), 3000);
+  const handleRemoveItem = (id: string) => {
+    setCartItems((prev) => prev.filter((item) => item._id !== id));
+  };
+
+  const handleCheckoutComplete = async (payment: Payment) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const orgId = localStorage.getItem('organization') 
+        ? JSON.parse(localStorage.getItem('organization')!).id 
+        : 'default';
+
+      if (!token) {
+        alert('Please login to continue');
         return;
       }
-      setCart(cart.map(item =>
-        item.product._id === product._id
-          ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * product.price }
-          : item
-      ));
-    } else {
-      setCart([...cart, { product, quantity: 1, subtotal: product.price }]);
-    }
-  };
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
-    const item = cart.find(i => i.product._id === productId);
-    if (!item) return;
+      // Prepare sale data
+      const saleData = {
+        customerId: selectedCustomer?._id !== 'walk-in' ? selectedCustomer?._id : undefined,
+        customerName: selectedCustomer?.name || 'Walk-in Customer',
+        customerPhone: selectedCustomer?.contactInfo?.phone,
+        customerType: selectedCustomer?._id === 'walk-in' ? 'walk-in' : 'registered',
+        items: cartItems.map(item => ({
+          productId: item.productId,
+          productName: item.productName,
+          brand: item.brand,
+          category: item.category,
+          quantity: item.quantity,
+          volumePerUnitML: item.volumePerUnitML,
+          rate: item.rate,
+          subTotal: item.subTotal,
+          discountAmount: item.discountAmount || 0,
+          finalAmount: item.finalAmount,
+          vatAmount: item.vatAmount || 0,
+          tcsAmount: item.tcsAmount || 0,
+        })),
+        payment: {
+          mode: payment.mode || 'Cash',
+          cashAmount: payment.cashAmount || payment.cash || 0,
+          onlineAmount: payment.onlineAmount || payment.online || 0,
+          creditAmount: payment.creditAmount || payment.credit || 0,
+          totalAmount: payment.totalAmount || 0,
+          transactionId: payment.transactionId,
+        },
+      };
 
-    if (newQuantity > item.product.stock) {
-      setError(`Only ${item.product.stock} ${item.product.unit}(s) available`);
-      setTimeout(() => setError(''), 3000);
-      return;
-    }
-
-    if (newQuantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-
-    setCart(cart.map(item =>
-      item.product._id === productId
-        ? { ...item, quantity: newQuantity, subtotal: newQuantity * item.product.price }
-        : item
-    ));
-  };
-
-  const removeFromCart = (productId: string) => {
-    setCart(cart.filter(item => item.product._id !== productId));
-  };
-
-  const calculateTotal = () => {
-    return cart.reduce((sum, item) => sum + item.subtotal, 0);
-  };
-
-  const handleCompleteSale = async () => {
-    if (cart.length === 0) {
-      setError('Cart is empty');
-      return;
-    }
-
-    setProcessing(true);
-    setError('');
-
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) return;
-
-    try {
-      const response = await fetch('/api/sales', {
+      const response = await fetch('/api/sales/create', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'x-tenant-id': localStorage.getItem('organization') ? JSON.parse(localStorage.getItem('organization')!).id : 'default'
+          'x-tenant-id': orgId,
         },
-        body: JSON.stringify({
-          items: cart.map(item => ({
-            productId: item.product._id,
-            quantity: item.quantity,
-            price: item.product.price,
-          })),
-          customerName: customerName || undefined,
-          customerPhone: customerPhone || undefined,
-          paymentMethod,
-          totalAmount: calculateTotal(),
-        }),
+        body: JSON.stringify(saleData),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to complete sale');
 
-      setSuccess('Sale completed successfully!');
-      setCart([]);
-      setCustomerName('');
-      setCustomerPhone('');
-      await fetchProducts(accessToken);
-      
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setProcessing(false);
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create sale');
+      }
+
+      // Show success message
+      alert(data.message + (data.data.message ? '\n' + data.data.message : ''));
+
+      // Reset cart and state
+      setCartItems([]);
+      setSelectedCustomer(null);
+
+      // Refresh recent sales
+      fetchRecentSales();
+      refetchProducts();
+    } catch (error: any) {
+      alert('Error: ' + (error.message || 'Failed to complete sale'));
     }
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
+  const handleRecordCreditPayment = (amount: number) => {
+    // This would typically update the customer's credit balance in a database
+    console.log(
+      `Recording credit payment of ₹${amount} for customer ${selectedCustomer?._id}`
     );
-  }
+  };
+
+  const fetchRecentSales = async () => {
+    try {
+      setSalesLoading(true);
+      const token = localStorage.getItem('accessToken');
+      const orgId = localStorage.getItem('organization') 
+        ? JSON.parse(localStorage.getItem('organization')!).id 
+        : 'default';
+
+      if (!token) return;
+
+      const response = await fetch('/api/sales?limit=10', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-tenant-id': orgId,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setRecentSales(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching recent sales:', error);
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
+  // Fetch recent sales on mount
+  useEffect(() => {
+    fetchRecentSales();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors touch-manipulation"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-              <span className="text-lg font-medium">Dashboard</span>
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sales</h1>
-            <div className="w-20" />
-          </div>
+      <header
+        className="relative bg-primary text-primary-foreground py-8 px-6 shadow-lg"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${heroBg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-4xl font-bold mb-2">Liquor POS</h1>
+          <p className="text-primary-foreground/90">
+            Professional Point of Sale System
+          </p>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Messages */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg">
-            <p className="font-medium">{error}</p>
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg">
-            <p className="font-medium">{success}</p>
-          </div>
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Customer Selection */}
+        <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+          <CustomerSelector
+            customers={customers}
+            selectedCustomer={selectedCustomer}
+            onSelectCustomer={setSelectedCustomer}
+          />
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setCreditPaymentDialogOpen(true)}
+            disabled={!selectedCustomer || selectedCustomer._id === "walk-in"}
+          >
+            <CreditCard className="h-4 w-4" />
+            Record Credit Payment
+          </Button>
+        </div>
+
+        {/* Customer Details Card */}
+        {selectedCustomer && (
+          <Card className="mb-6 p-4">
+            <div className="flex items-start gap-4">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Customer</p>
+                    <p className="font-semibold">{selectedCustomer.name}</p>
+                  </div>
+                </div>
+                {selectedCustomer.contactInfo.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <p className="font-semibold">
+                        {selectedCustomer.contactInfo.phone}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {selectedCustomer._id !== "walk-in" && (
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Credit Balance
+                      </p>
+                      <p className="font-semibold text-primary">
+                        ₹
+                        {selectedCustomer.creditLimit -
+                          (selectedCustomer.outstandingBalance ?? 0) || 0}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Products Section */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Search */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-lg border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white touch-manipulation"
-                />
-                <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
+          <div className="lg:col-span-2 space-y-4">
+            {/* Search and Filters */}
+            <div className="space-y-4">
+              <ProductSearch
+                products={products}
+                onSelectProduct={handleProductSelect}
+              />
+              <ProductFilters
+                selectedVolumes={selectedVolumes}
+                selectedCategories={selectedCategories}
+                onVolumeToggle={handleVolumeToggle}
+                onCategoryToggle={handleCategoryToggle}
+                onClearFilters={handleClearFilters}
+              />
             </div>
 
-            {/* Products Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {filteredProducts.map((product) => (
-                <button
-                  key={product._id}
-                  onClick={() => addToCart(product)}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all p-4 text-left touch-manipulation"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">
-                      {product.category}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {product.stock} {product.unit}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-gray-900 dark:text-white mb-1 truncate">
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    {product.sku}
-                  </p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    ${product.price.toFixed(2)}
-                  </p>
-                </button>
-              ))}
+            {/* Product Gallery - Scrollable */}
+            <div className="h-[calc(100vh-420px)] overflow-y-auto pr-2">
+              {productsLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">
+                    Loading products...
+                  </span>
+                </div>
+              ) : productsError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {productsError}
+                    <button
+                      onClick={refetchProducts}
+                      className="ml-2 underline font-semibold"
+                    >
+                      Retry
+                    </button>
+                  </AlertDescription>
+                </Alert>
+              ) : filteredProducts.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>No products found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-4">
+                  {filteredProducts.map((product) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      onSelect={handleProductSelect}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl">
-                <p className="text-gray-600 dark:text-gray-400">No products found</p>
-              </div>
-            )}
           </div>
 
           {/* Cart Section */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 sticky top-24">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Cart</h2>
-
-              {/* Customer Info */}
-              <div className="space-y-3 mb-6">
-                <input
-                  type="text"
-                  placeholder="Customer Name (Optional)"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white touch-manipulation"
-                />
-                <input
-                  type="tel"
-                  placeholder="Phone (Optional)"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white touch-manipulation"
-                />
-              </div>
-
-              {/* Cart Items */}
-              <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
-                {cart.map((item) => (
-                  <div key={item.product._id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
-                          {item.product.name}
-                        </h4>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          ${item.product.price.toFixed(2)} each
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => removeFromCart(item.product._id)}
-                        className="text-red-600 hover:text-red-700 p-1 touch-manipulation"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
-                          className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 active:scale-95 transition-all touch-manipulation"
-                        >
-                          -
-                        </button>
-                        <span className="w-12 text-center font-bold text-gray-900 dark:text-white">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
-                          className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 active:scale-95 transition-all touch-manipulation"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <p className="font-bold text-purple-600">
-                        ${item.subtotal.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {cart.length === 0 && (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <svg className="mx-auto w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <p>Cart is empty</p>
-                </div>
-              )}
-
-              {/* Payment Method */}
-              {cart.length > 0 && (
-                <>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Payment Method
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['cash', 'card', 'upi'] as const).map((method) => (
-                        <button
-                          key={method}
-                          onClick={() => setPaymentMethod(method)}
-                          className={`py-3 px-4 rounded-lg font-medium capitalize transition-all touch-manipulation ${
-                            paymentMethod === method
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                          }`}
-                        >
-                          {method}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Total */}
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-600 dark:text-gray-400">Items:</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xl font-bold text-gray-900 dark:text-white">Total:</span>
-                      <span className="text-3xl font-bold text-purple-600">
-                        ${calculateTotal().toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Complete Sale Button */}
-                  <button
-                    onClick={handleCompleteSale}
-                    disabled={processing}
-                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-lg font-bold rounded-xl shadow-lg hover:shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                  >
-                    {processing ? 'Processing...' : 'Complete Sale'}
-                  </button>
-                </>
-              )}
-            </div>
+          <div>
+            <ShoppingCart
+              items={cartItems}
+              customer={selectedCustomer}
+              onRemoveItem={handleRemoveItem}
+              onEditItem={handleEditItem}
+              onComplete={handleCheckoutComplete}
+            />
           </div>
         </div>
+
+        {/* Recent Sales Table */}
+        <div className="mt-8">
+          <Card className="p-6">
+            <h2 className="text-2xl font-bold mb-4">Recent Sales</h2>
+            {salesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : recentSales.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No recent sales
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Bill ID</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Items</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Quantity</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Volume</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold">Total Amount</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Payment</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {recentSales.map((sale) => (
+                      <tr key={sale._id} className="hover:bg-muted/50">
+                        <td className="px-4 py-3 text-sm font-medium">{sale.totalBillId}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <div className="font-medium">{sale.customerName}</div>
+                            {sale.customerPhone && (
+                              <div className="text-xs text-muted-foreground">{sale.customerPhone}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{sale.items?.length || 0}</td>
+                        <td className="px-4 py-3 text-sm">{sale.totalQuantityBottles}</td>
+                        <td className="px-4 py-3 text-sm">{(sale.totalVolumeML / 1000).toFixed(2)}L</td>
+                        <td className="px-4 py-3 text-sm text-right font-semibold">₹{sale.totalAmount?.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            sale.payment?.mode === 'Cash' ? 'bg-green-100 text-green-800' :
+                            sale.payment?.mode === 'Online' ? 'bg-blue-100 text-blue-800' :
+                            sale.payment?.mode === 'Credit' ? 'bg-orange-100 text-orange-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {sale.payment?.mode || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {new Date(sale.saleDate || sale.createdAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
+
+      {/* Dialogs */}
+      <QuantityDialog
+        product={selectedProduct}
+        open={quantityDialogOpen}
+        onClose={() => setQuantityDialogOpen(false)}
+        onConfirm={handleQuantityConfirm}
+        initialQuantity={editingItem?.quantity}
+        initialDiscount={editingItem?.discountAmount}
+      />
+
+      <CreditPaymentDialog
+        open={creditPaymentDialogOpen}
+        onClose={() => setCreditPaymentDialogOpen(false)}
+        customer={selectedCustomer}
+        onRecordPayment={handleRecordCreditPayment}
+      />
     </div>
   );
-}
+};
+
+export default Index;

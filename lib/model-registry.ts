@@ -66,10 +66,33 @@ UserSchema.index({ organizationId: 1 });
 UserSchema.index({ role: 1 });
 
 /**
- * Product Model Schema
+ * Product Purchase Price Sub-Schema
+ */
+const ProductPurchasePriceSchema = new Schema({
+  purchasePrice: { type: Number, required: true, min: 0 },
+  batchNumber: { type: String },
+  effectiveFrom: { type: String, required: true },
+  effectiveTo: { type: String },
+  createdAt: { type: String, required: true },
+  updatedAt: { type: String },
+}, { _id: false });
+
+/**
+ * Tax Info Sub-Schema
+ */
+const TaxInfoSchema = new Schema({
+  vat: { type: Number, min: 0 },
+  tcs: { type: Number, min: 0 },
+  gst: { type: Number, min: 0 },
+  cess: { type: Number, min: 0 },
+}, { _id: false });
+
+/**
+ * Product Model Schema (based on ProductDetails interface)
  */
 const ProductSchema = new Schema(
   {
+    // Basic Info
     name: {
       type: String,
       required: true,
@@ -79,13 +102,20 @@ const ProductSchema = new Schema(
       type: String,
       trim: true,
     },
+    imageUrl: {
+      type: String,
+    },
     sku: {
       type: String,
-      required: true,
       trim: true,
     },
     barcode: {
       type: String,
+      trim: true,
+    },
+    brand: {
+      type: String,
+      required: true,
       trim: true,
     },
     category: {
@@ -93,37 +123,78 @@ const ProductSchema = new Schema(
       required: true,
       trim: true,
     },
-    price: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    cost: {
-      type: Number,
-      min: 0,
-    },
-    stock: {
+
+    // Inventory
+    currentStock: {
       type: Number,
       required: true,
       default: 0,
       min: 0,
     },
-    minStock: {
+    volumeML: {
       type: Number,
       required: true,
-      default: 0,
       min: 0,
     },
-    unit: {
+    reorderLevel: {
+      type: Number,
+      min: 0,
+    },
+    morningStock: {
+      type: Number,
+      min: 0,
+    },
+    morningStockLastUpdatedDate: {
       type: String,
-      required: true,
-      enum: ['bottle', 'case', 'pack', 'unit'],
-      default: 'bottle',
     },
+    eveningStock: {
+      type: Number,
+      min: 0,
+    },
+
+    // Pricing
+    pricePerUnit: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    purchasePricePerUnit: {
+      type: [ProductPurchasePriceSchema],
+      default: [],
+    },
+
+    // Tax Info
+    taxInfo: {
+      type: TaxInfoSchema,
+    },
+
+    // Batch (Optional)
+    batchNumber: {
+      type: String,
+    },
+    expiryDate: {
+      type: String,
+    },
+
+    // Box Mapping (Optional)
+    bottlesPerCaret: {
+      type: Number,
+      min: 0,
+    },
+    noOfCarets: {
+      type: Number,
+      min: 0,
+    },
+
+    // Status
     isActive: {
       type: Boolean,
       default: true,
     },
+    location: {
+      type: String,
+    },
+
     organizationId: {
       type: String,
       required: true,
@@ -135,11 +206,12 @@ const ProductSchema = new Schema(
 );
 
 // Indexes for Product
-ProductSchema.index({ sku: 1 }, { unique: true });
-ProductSchema.index({ barcode: 1 }, { sparse: true });
-ProductSchema.index({ category: 1 });
-ProductSchema.index({ organizationId: 1 });
-ProductSchema.index({ name: 'text', description: 'text' });
+ProductSchema.index({ organizationId: 1, sku: 1 });
+ProductSchema.index({ organizationId: 1, barcode: 1 }, { sparse: true });
+ProductSchema.index({ organizationId: 1, category: 1 });
+ProductSchema.index({ organizationId: 1, brand: 1 });
+ProductSchema.index({ organizationId: 1, name: 1 });
+ProductSchema.index({ name: 'text', description: 'text', brand: 'text' });
 
 /**
  * Sale Model Schema
@@ -276,6 +348,170 @@ InventoryTransactionSchema.index({ organizationId: 1, createdAt: -1 });
 InventoryTransactionSchema.index({ type: 1 });
 
 /**
+ * Customer Model Schema (based on Client interface)
+ */
+const CustomerSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    type: {
+      type: String,
+      enum: ['Retail', 'Wholesale', 'Walk-In', 'B2B'],
+      required: true,
+    },
+    contactInfo: {
+      phone: {
+        type: String,
+      },
+      email: {
+        type: String,
+        lowercase: true,
+      },
+      address: {
+        type: String,
+      },
+      gstin: {
+        type: String,
+      },
+    },
+    maxDiscountPercentage: {
+      type: Number,
+      min: 0,
+      max: 100,
+    },
+    walletBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    creditLimit: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    outstandingBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastTransactionDate: {
+      type: String,
+    },
+    openingBalance: {
+      type: Number,
+      default: 0,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    notes: {
+      type: String,
+    },
+    organizationId: {
+      type: String,
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Indexes for Customer
+CustomerSchema.index({ organizationId: 1, 'contactInfo.email': 1 });
+CustomerSchema.index({ organizationId: 1, type: 1 });
+CustomerSchema.index({ organizationId: 1, name: 1 });
+
+/**
+ * Vendor Model Schema
+ */
+const VendorSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    contactInfo: {
+      phone: {
+        type: String,
+        required: true,
+      },
+      email: {
+        type: String,
+        required: true,
+        lowercase: true,
+      },
+      address: {
+        type: String,
+        required: true,
+      },
+    },
+    gstin: {
+      type: String,
+    },
+    paymentTerms: {
+      type: String,
+    },
+    bankDetails: {
+      accountName: {
+        type: String,
+        required: true,
+      },
+      accountNumber: {
+        type: String,
+        required: true,
+      },
+      bankName: {
+        type: String,
+        required: true,
+      },
+      ifscCode: {
+        type: String,
+        required: true,
+      },
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    tin: {
+      type: String,
+      required: true,
+    },
+    cin: {
+      type: String,
+      required: true,
+    },
+    notes: {
+      type: String,
+    },
+    vendorPriority: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    organizationId: {
+      type: String,
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Indexes for Vendor
+VendorSchema.index({ organizationId: 1, 'contactInfo.email': 1 });
+VendorSchema.index({ organizationId: 1, name: 1 });
+VendorSchema.index({ organizationId: 1, vendorPriority: -1 });
+VendorSchema.index({ organizationId: 1, isActive: 1 });
+
+/**
  * Register all schemas
  * This should be called once at application startup
  */
@@ -284,9 +520,11 @@ export function registerAllModels() {
   registerModelSchema('Product', ProductSchema);
   registerModelSchema('Sale', SaleSchema);
   registerModelSchema('InventoryTransaction', InventoryTransactionSchema);
+  registerModelSchema('Customer', CustomerSchema);
+  registerModelSchema('Vendor', VendorSchema);
   
   console.log('✅ All model schemas registered');
 }
 
 // Export schemas for type definitions
-export { UserSchema, ProductSchema, SaleSchema, InventoryTransactionSchema };
+export { UserSchema, ProductSchema, SaleSchema, InventoryTransactionSchema, CustomerSchema, VendorSchema };

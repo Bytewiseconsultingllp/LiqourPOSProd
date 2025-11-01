@@ -11,7 +11,7 @@ export interface TokenPayload {
   userId: string;
   email: string;
   organizationId: string;
-  role: 'admin' | 'manager' | 'staff';
+  role: 'org_admin' | 'admin' | 'manager' | 'sales' | 'accountant' | 'tax_officer';
   iat?: number;
   exp?: number;
 }

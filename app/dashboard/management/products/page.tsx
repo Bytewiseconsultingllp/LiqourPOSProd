@@ -2,30 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-interface Product {
-  _id: string;
-  name: string;
-  description?: string;
-  sku: string;
-  barcode?: string;
-  category: string;
-  price: number;
-  cost?: number;
-  stock: number;
-  minStock: number;
-  unit: string;
-  isActive: boolean;
-}
+import { ProductDetails } from '@/types/product';
 
 export default function ProductsManagementPage() {
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   
@@ -34,12 +20,12 @@ export default function ProductsManagementPage() {
     description: '',
     sku: '',
     barcode: '',
+    brand: '',
     category: '',
-    price: '',
-    cost: '',
-    stock: '',
-    minStock: '',
-    unit: 'bottle',
+    pricePerUnit: '',
+    volumeML: '',
+    currentStock: '',
+    reorderLevel: '',
   });
 
   useEffect(() => {
@@ -87,11 +73,18 @@ export default function ProductsManagementPage() {
           'x-tenant-id': localStorage.getItem('organization') ? JSON.parse(localStorage.getItem('organization')!).id : 'default'
         },
         body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price),
-          cost: formData.cost ? parseFloat(formData.cost) : undefined,
-          stock: parseInt(formData.stock),
-          minStock: parseInt(formData.minStock),
+          name: formData.name,
+          description: formData.description,
+          sku: formData.sku,
+          barcode: formData.barcode,
+          brand: formData.brand,
+          category: formData.category,
+          pricePerUnit: parseFloat(formData.pricePerUnit),
+          volumeML: parseInt(formData.volumeML),
+          currentStock: parseInt(formData.currentStock),
+          reorderLevel: formData.reorderLevel ? parseInt(formData.reorderLevel) : undefined,
+          isActive: true,
+          purchasePricePerUnit: [],
         }),
       });
 
@@ -100,8 +93,8 @@ export default function ProductsManagementPage() {
 
       await fetchProducts(accessToken);
       setFormData({
-        name: '', description: '', sku: '', barcode: '', category: '',
-        price: '', cost: '', stock: '', minStock: '', unit: 'bottle'
+        name: '', description: '', sku: '', barcode: '', brand: '', category: '',
+        pricePerUnit: '', volumeML: '', currentStock: '', reorderLevel: ''
       });
       setShowCreateModal(false);
     } catch (err: any) {
@@ -125,11 +118,16 @@ export default function ProductsManagementPage() {
           'x-tenant-id': localStorage.getItem('organization') ? JSON.parse(localStorage.getItem('organization')!).id : 'default'
         },
         body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price),
-          cost: formData.cost ? parseFloat(formData.cost) : undefined,
-          stock: parseInt(formData.stock),
-          minStock: parseInt(formData.minStock),
+          name: formData.name,
+          description: formData.description,
+          sku: formData.sku,
+          barcode: formData.barcode,
+          brand: formData.brand,
+          category: formData.category,
+          pricePerUnit: parseFloat(formData.pricePerUnit),
+          volumeML: parseInt(formData.volumeML),
+          currentStock: parseInt(formData.currentStock),
+          reorderLevel: formData.reorderLevel ? parseInt(formData.reorderLevel) : undefined,
         }),
       });
 
@@ -172,19 +170,19 @@ export default function ProductsManagementPage() {
     }
   };
 
-  const openEditModal = (product: Product) => {
+  const openEditModal = (product: ProductDetails) => {
     setSelectedProduct(product);
     setFormData({
       name: product.name,
       description: product.description || '',
-      sku: product.sku,
+      sku: product.sku || '',
       barcode: product.barcode || '',
+      brand: product.brand,
       category: product.category,
-      price: product.price.toString(),
-      cost: product.cost?.toString() || '',
-      stock: product.stock.toString(),
-      minStock: product.minStock.toString(),
-      unit: product.unit,
+      pricePerUnit: product.pricePerUnit.toString(),
+      volumeML: product.volumeML.toString(),
+      currentStock: product.currentStock.toString(),
+      reorderLevel: product.reorderLevel?.toString() || '',
     });
     setShowEditModal(true);
   };
@@ -192,7 +190,7 @@ export default function ProductsManagementPage() {
   const categories = Array.from(new Set(products.map(p => p.category)));
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+                         (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = filterCategory === 'all' || product.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
@@ -243,7 +241,7 @@ export default function ProductsManagementPage() {
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Low Stock</p>
-            <p className="text-3xl font-bold text-red-600">{products.filter(p => p.stock <= p.minStock).length}</p>
+            <p className="text-3xl font-bold text-red-600">{products.filter(p => p.reorderLevel && p.currentStock <= p.reorderLevel).length}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Categories</p>
@@ -304,7 +302,7 @@ export default function ProductsManagementPage() {
               className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-xl transition-shadow overflow-hidden"
             >
               {/* Product Header */}
-              <div className={`h-3 ${product.stock <= product.minStock ? 'bg-red-500' : 'bg-green-500'}`} />
+              <div className={`h-3 ${product.reorderLevel && product.currentStock <= product.reorderLevel ? 'bg-red-500' : 'bg-green-500'}`} />
               
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
@@ -313,8 +311,13 @@ export default function ProductsManagementPage() {
                       {product.name}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      SKU: {product.sku}
+                      {product.brand} • {product.volumeML}ml
                     </p>
+                    {product.sku && (
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        SKU: {product.sku}
+                      </p>
+                    )}
                   </div>
                   <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-semibold rounded-full">
                     {product.category}
@@ -330,17 +333,17 @@ export default function ProductsManagementPage() {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Price</p>
-                    <p className="text-2xl font-bold text-green-600">${product.price.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-green-600">₹{product.pricePerUnit.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Stock</p>
-                    <p className={`text-2xl font-bold ${product.stock <= product.minStock ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
-                      {product.stock} {product.unit}
+                    <p className={`text-2xl font-bold ${product.reorderLevel && product.currentStock <= product.reorderLevel ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                      {product.currentStock}
                     </p>
                   </div>
                 </div>
 
-                {product.stock <= product.minStock && (
+                {product.reorderLevel && product.currentStock <= product.reorderLevel && (
                   <div className="mb-4 p-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 text-sm rounded-lg flex items-center">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -399,12 +402,12 @@ export default function ProductsManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">SKU *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand *</label>
                   <input
                     type="text"
                     required
-                    value={formData.sku}
-                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    value={formData.brand}
+                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                     className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
                   />
                 </div>
@@ -420,7 +423,7 @@ export default function ProductsManagementPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category *</label>
                   <input
@@ -428,6 +431,15 @@ export default function ProductsManagementPage() {
                     required
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">SKU</label>
+                  <input
+                    type="text"
+                    value={formData.sku}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
                   />
                 </div>
@@ -444,60 +456,45 @@ export default function ProductsManagementPage() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price/Unit (₹) *</label>
                   <input
                     type="number"
                     step="0.01"
                     required
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    value={formData.pricePerUnit}
+                    onChange={(e) => setFormData({ ...formData, pricePerUnit: e.target.value })}
                     className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cost</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                    className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Volume (ML) *</label>
                   <input
                     type="number"
                     required
-                    value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    value={formData.volumeML}
+                    onChange={(e) => setFormData({ ...formData, volumeML: e.target.value })}
                     className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Min Stock *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Stock *</label>
                   <input
                     type="number"
                     required
-                    value={formData.minStock}
-                    onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
+                    value={formData.currentStock}
+                    onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
                     className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unit *</label>
-                <select
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
-                >
-                  <option value="bottle">Bottle</option>
-                  <option value="case">Case</option>
-                  <option value="pack">Pack</option>
-                  <option value="unit">Unit</option>
-                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reorder Level</label>
+                  <input
+                    type="number"
+                    value={formData.reorderLevel}
+                    onChange={(e) => setFormData({ ...formData, reorderLevel: e.target.value })}
+                    className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
+                  />
+                </div>
               </div>
 
               <div className="flex space-x-3 pt-4">
@@ -514,8 +511,8 @@ export default function ProductsManagementPage() {
                     setShowEditModal(false);
                     setSelectedProduct(null);
                     setFormData({
-                      name: '', description: '', sku: '', barcode: '', category: '',
-                      price: '', cost: '', stock: '', minStock: '', unit: 'bottle'
+                      name: '', description: '', sku: '', barcode: '', brand: '', category: '',
+                      pricePerUnit: '', volumeML: '', currentStock: '', reorderLevel: ''
                     });
                   }}
                   className="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-4 px-6 rounded-xl font-semibold hover:bg-gray-400 dark:hover:bg-gray-500 active:scale-95 transition-all touch-manipulation"

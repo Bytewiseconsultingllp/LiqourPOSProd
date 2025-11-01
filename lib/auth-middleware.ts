@@ -35,14 +35,32 @@ export async function requireAuth(
 }
 
 /**
- * Middleware to require admin role
+ * Middleware to require org_admin role
+ */
+export async function requireOrgAdmin(
+  request: NextRequest,
+  handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
+): Promise<NextResponse> {
+  return requireAuth(request, async (req, user) => {
+    if (user.role !== 'org_admin') {
+      return NextResponse.json(
+        { error: 'Organization Admin access required' },
+        { status: 403 }
+      );
+    }
+    return handler(req, user);
+  });
+}
+
+/**
+ * Middleware to require admin role (org_admin or admin)
  */
 export async function requireAdmin(
   request: NextRequest,
   handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
 ): Promise<NextResponse> {
   return requireAuth(request, async (req, user) => {
-    if (user.role !== 'admin') {
+    if (user.role !== 'org_admin' && user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -60,7 +78,8 @@ export async function requireAdminOrManager(
   handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
 ): Promise<NextResponse> {
   return requireAuth(request, async (req, user) => {
-    if (user.role !== 'admin' && user.role !== 'manager') {
+    const allowedRoles = ['org_admin', 'admin', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
       return NextResponse.json(
         { error: 'Admin or manager access required' },
         { status: 403 }

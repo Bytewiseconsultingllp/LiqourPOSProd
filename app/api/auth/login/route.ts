@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongoose';
 import User from '@/models/User';
 import Organization from '@/models/Organization';
@@ -76,46 +77,83 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Initialize tenant database connection and register models
+    const organizationId = organization._id.toString();
+    const mainUserId = user._id.toString();
+    const mainUserData = {
+      email: user.email,
+      password: user.password,
+      role: user.role,
+      name: user.name,
+    };
+
+    // STEP 2: Connect to tenant database and verify user exists
+    let tenantConnection;
+    let tenantUser;
     try {
-      // Register all model schemas (idempotent operation)
+      // Register all model schemas FIRST (before getting connection)
       registerAllModels();
       
-      // Create/get tenant-specific database connection
-      const tenantConnection = await getTenantConnection(organization._id.toString());
+      // Get tenant connection (this will use the registered schemas)
+      tenantConnection = await getTenantConnection(organizationId);
       
-      console.log(`✅ Tenant database initialized for organization: ${organization.name}`);
+      // Get User model from tenant DB
+      const TenantUser = getTenantModel(tenantConnection, 'User');
+      
+      // Check if user exists in tenant DB
+      tenantUser = await TenantUser.findOne({ 
+        email: normalizedEmail,
+        organizationId 
+      }).select('+password');
+      
+      if (!tenantUser) {
+        console.log(`⚠️ User not found in tenant DB, this is expected for old users`);
+        // User doesn't exist in tenant DB yet - this is OK for existing users
+        // They will be created on first login
+      } else {
+        console.log(`✅ User found in tenant database: ${tenantUser.email}`);
+      }
+      
+      console.log(`✅ Tenant database connected: tenant_${organizationId}`);
     } catch (dbError) {
-      console.error('Failed to initialize tenant database:', dbError);
+      console.error('Failed to connect to tenant database:', dbError);
       return NextResponse.json(
         { error: 'Failed to initialize organization database' },
         { status: 500 }
       );
     }
 
-    // Generate tokens
+    // STEP 3: Generate tokens (for tenant DB, not main DB)
     const tokenPayload = {
-      userId: user._id.toString(),
-      email: user.email,
-      organizationId: user.organizationId,
-      role: user.role,
+      userId: mainUserId,
+      email: mainUserData.email,
+      organizationId: organizationId,
+      role: mainUserData.role,
     };
 
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-    // Update user's last login and refresh token
-    user.lastLogin = new Date();
-    user.refreshToken = refreshToken;
-    await user.save();
+    // STEP 4: Update user's last login in TENANT DB (if user exists)
+    if (tenantUser) {
+      tenantUser.lastLogin = new Date();
+      tenantUser.refreshToken = refreshToken;
+      await tenantUser.save();
+      console.log(`✅ Updated last login in tenant database`);
+    }
+
+    // Note: We keep BOTH main and tenant DB connections active
+    // Main DB is needed for user edit/delete operations
+    // Tenant DB is used for all other operations
+    console.log(`✅ Both database connections active (main + tenant)`);
+
 
     // Cache user and organization data
     const userData = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      organizationId: user.organizationId,
+      id: mainUserId,
+      name: mainUserData.name,
+      email: mainUserData.email,
+      role: mainUserData.role,
+      organizationId: organizationId,
     };
 
     const orgData = {
@@ -125,7 +163,7 @@ export async function POST(request: NextRequest) {
       settings: organization.settings,
     };
 
-    cacheUser(user._id.toString(), userData);
+    cacheUser(mainUserId, userData);
     cacheOrganization(organization._id.toString(), orgData);
 
     return NextResponse.json({

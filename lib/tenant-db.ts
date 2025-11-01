@@ -76,12 +76,19 @@ export async function getTenantConnection(organizationId: string): Promise<Conne
  * Register all models for a tenant connection
  */
 function registerModelsForTenant(connection: Connection) {
+  console.log(`📋 Registering ${modelSchemas.size} models for tenant connection...`);
+  
   modelSchemas.forEach(({ schema, options }, modelName) => {
     // Check if model is already registered
     if (!connection.models[modelName]) {
       connection.model(modelName, schema, options?.collection);
+      console.log(`  ✅ Registered model: ${modelName}`);
+    } else {
+      console.log(`  ⏭️  Model already registered: ${modelName}`);
     }
   });
+  
+  console.log(`📋 Total models in connection: ${Object.keys(connection.models).length}`);
 }
 
 /**

@@ -103,7 +103,7 @@ export default function DashboardPage() {
 
           {/* Products */}
           <a
-            href="/dashboard/products"
+            href="/dashboard/management/purchases"
             className="block p-6 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow"
           >
             <div className="flex items-center justify-between mb-4">
@@ -114,10 +114,10 @@ export default function DashboardPage() {
               </div>
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Products
+              Purchases
             </h3>
             <p className="text-gray-600 dark:text-gray-400 text-sm">
-              Manage your inventory and products
+              Manage your purchases
             </p>
           </a>
 

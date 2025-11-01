@@ -20,7 +20,8 @@ export default function ManagementPage() {
     setUser(parsedUser);
 
     // Check if user has management permissions
-    if (parsedUser.role !== 'admin' && parsedUser.role !== 'manager') {
+    const allowedRoles = ['org_admin', 'admin', 'manager'];
+    if (!allowedRoles.includes(parsedUser.role)) {
       router.push('/dashboard');
       return;
     }
@@ -45,7 +46,7 @@ export default function ManagementPage() {
       ),
       href: '/dashboard/management/users',
       color: 'from-blue-500 to-blue-600',
-      permission: ['admin', 'manager'],
+      permission: ['org_admin', 'admin', 'manager'],
     },
     {
       title: 'Product Management',
@@ -57,19 +58,31 @@ export default function ManagementPage() {
       ),
       href: '/dashboard/management/products',
       color: 'from-green-500 to-green-600',
-      permission: ['admin', 'manager', 'staff'],
+      permission: ['org_admin', 'admin', 'manager', 'sales', 'accountant', 'tax_officer'],
     },
     {
-      title: 'Sales Entry',
-      description: 'Process sales and manage transactions',
+      title: 'Vendor Management',
+      description: 'Manage vendors and their details',
       icon: (
         <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       ),
-      href: '/dashboard/management/sales',
+      href: '/dashboard/management/vendors',
       color: 'from-purple-500 to-purple-600',
-      permission: ['admin', 'manager', 'staff'],
+      permission: ['org_admin', 'admin', 'manager', 'sales', 'accountant', 'tax_officer'],
+    },
+    {
+      title: 'Customer Management',
+      description: 'Manage customers and their accounts',
+      icon: (
+        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+      href: '/dashboard/management/customers',
+      color: 'from-pink-500 to-pink-600',
+      permission: ['org_admin', 'admin', 'manager', 'sales'],
     },
   ];
 

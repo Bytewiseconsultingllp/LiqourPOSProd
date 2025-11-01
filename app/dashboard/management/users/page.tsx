@@ -7,7 +7,7 @@ interface User {
   _id: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager' | 'staff';
+  role: 'org_admin' | 'admin' | 'manager' | 'sales' | 'accountant' | 'tax_officer';
   isActive: boolean;
   createdAt: string;
 }
@@ -28,7 +28,7 @@ export default function UsersManagementPage() {
     name: '',
     email: '',
     password: '',
-    role: 'staff' as 'admin' | 'manager' | 'staff',
+    role: 'sales' as User['role'],
   });
 
   useEffect(() => {
@@ -43,7 +43,8 @@ export default function UsersManagementPage() {
     const user = JSON.parse(userData);
     setCurrentUser(user);
 
-    if (user.role !== 'admin' && user.role !== 'manager') {
+    // Only org_admin can access user management
+    if (user.role !== 'org_admin') {
       router.push('/dashboard');
       return;
     }
@@ -89,7 +90,7 @@ export default function UsersManagementPage() {
       if (!response.ok) throw new Error(data.error || 'Failed to create user');
 
       await fetchUsers(accessToken);
-      setFormData({ name: '', email: '', password: '', role: 'staff' });
+      setFormData({ name: '', email: '', password: '', role: 'sales' });
       setShowCreateModal(false);
     } catch (err: any) {
       setError(err.message);
@@ -198,9 +199,12 @@ export default function UsersManagementPage() {
               className="w-full px-4 py-4 text-lg border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white touch-manipulation"
             >
               <option value="all">All Roles</option>
+              <option value="org_admin">Organization Admin</option>
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
-              <option value="staff">Staff</option>
+              <option value="sales">Sales</option>
+              <option value="accountant">Accountant</option>
+              <option value="tax_officer">Tax Officer</option>
             </select>
           </div>
         </div>
@@ -330,9 +334,11 @@ export default function UsersManagementPage() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
                   className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white touch-manipulation"
                 >
-                  <option value="staff">Staff</option>
+                  <option value="sales">Sales</option>
+                  <option value="accountant">Accountant</option>
+                  <option value="tax_officer">Tax Officer</option>
                   <option value="manager">Manager</option>
-                  {currentUser?.role === 'admin' && <option value="admin">Admin</option>}
+                  <option value="admin">Admin</option>
                 </select>
               </div>
               <div className="flex space-x-3 pt-4">
@@ -346,7 +352,7 @@ export default function UsersManagementPage() {
                   type="button"
                   onClick={() => {
                     setShowCreateModal(false);
-                    setFormData({ name: '', email: '', password: '', role: 'staff' });
+                    setFormData({ name: '', email: '', password: '', role: 'sales' });
                   }}
                   className="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-4 px-6 rounded-xl font-semibold hover:bg-gray-400 dark:hover:bg-gray-500 active:scale-95 transition-all touch-manipulation"
                 >
