@@ -33,6 +33,16 @@ export async function connectToDatabase() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      socketTimeoutMS: 45000,
+      serverSelectionTimeoutMS: 10000,
+      // SSL/TLS Configuration
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+      tlsAllowInvalidHostnames: false,
+      retryWrites: true,
+      retryReads: true,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts);
@@ -69,6 +79,16 @@ export async function getTenantConnection(tenantId: string): Promise<typeof mong
   
   const connection = await mongoose.createConnection(tenantUri, {
     bufferCommands: false,
+    maxPoolSize: 10,
+    minPoolSize: 2,
+    socketTimeoutMS: 45000,
+    serverSelectionTimeoutMS: 10000,
+    // SSL/TLS Configuration
+    tls: true,
+    tlsAllowInvalidCertificates: false,
+    tlsAllowInvalidHostnames: false,
+    retryWrites: true,
+    retryReads: true,
   }).asPromise();
 
   tenantConnections.set(tenantId, connection as unknown as typeof mongoose);
