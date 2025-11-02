@@ -105,8 +105,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Liquor POS';
   const options = {
     body: data.body || 'You have a new notification',
-    icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
+    icon: '/icon-192x192.svg',
+    badge: '/icon-192x192.svg',
     vibrate: [200, 100, 200],
     data: data.url || '/dashboard'
   };
