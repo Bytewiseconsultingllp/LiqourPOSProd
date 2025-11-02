@@ -439,7 +439,7 @@ export function ClosingStockUpdateTable() {
                 <TableHead className="text-center">Morning</TableHead>
                 <TableHead className="text-center">Purchases</TableHead>
                 <TableHead className="text-center">Sales</TableHead>
-                <TableHead className="text-center">Expected</TableHead>
+                {/* <TableHead className="text-center">Expected</TableHead> */}
                 <TableHead className="text-center">Current</TableHead>
                 <TableHead className="text-center w-[120px]">Closing Stock</TableHead>
                 <TableHead className="text-center">Discrepancy</TableHead>
@@ -478,9 +478,8 @@ export function ClosingStockUpdateTable() {
                     <TableCell className="text-center">
                       <span className="text-red-600 font-semibold">-{sales}</span>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <span className="text-blue-600 font-bold">{expectedStock}</span>
-                    </TableCell>
+                    {/* 
+                     */}
                     <TableCell className="text-center">
                       <span className="font-semibold">{product.currentStock}</span>
                     </TableCell>
