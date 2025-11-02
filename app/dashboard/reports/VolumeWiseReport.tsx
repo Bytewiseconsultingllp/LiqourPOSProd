@@ -1,0 +1,200 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/dashboard/components/ui/card';
+import { Input } from '@/app/dashboard/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/app/dashboard/components/ui/table';
+import { Calendar, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge } from '@/app/dashboard/components/ui/badge';
+
+interface VolumeSalesData {
+  volumeML: number;
+  totalQuantity: number;
+  totalVolumeML: number;
+  totalAmount: number;
+  productCount: number;
+  billCount: number;
+}
+
+export function VolumeWiseReport() {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<VolumeSalesData[]>([]);
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+  const [toDate, setToDate] = useState<string>(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+
+  useEffect(() => {
+    if (fromDate && toDate) {
+      fetchReport();
+    }
+  }, [fromDate, toDate]);
+
+  const fetchReport = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('accessToken');
+      const orgData = localStorage.getItem('organization');
+      
+      if (!token || !orgData) {
+        toast.error('Please login again');
+        return;
+      }
+
+      const organization = JSON.parse(orgData);
+      const orgId = organization._id || organization.id;
+
+      const response = await fetch(`/api/reports/volume-wise?fromDate=${fromDate}&toDate=${toDate}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-tenant-id': orgId,
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch report');
+      
+      const result = await response.json();
+      setData(result.data || []);
+    } catch (error) {
+      console.error('Error fetching volume report:', error);
+      toast.error('Failed to load volume report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalAmount = data.reduce((sum, v) => sum + v.totalAmount, 0);
+  const totalQuantity = data.reduce((sum, v) => sum + v.totalQuantity, 0);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl">Volume-Wise Sales Report</CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">
+          Sales breakdown by bottle volume
+        </p>
+
+        {/* Date Range Selector */}
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">From Date</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                max={toDate}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-2 block">To Date</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                min={fromDate}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground mb-1">Volume Types</p>
+            <p className="text-2xl font-bold">{data.length}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground mb-1">Total Quantity</p>
+            <p className="text-2xl font-bold">{totalQuantity}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+            <p className="text-2xl font-bold">₹{totalAmount.toFixed(2)}</p>
+          </Card>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">#</TableHead>
+                <TableHead>Volume Size</TableHead>
+                <TableHead className="text-center">Products</TableHead>
+                <TableHead className="text-center">Bills</TableHead>
+                <TableHead className="text-center">Quantity</TableHead>
+                <TableHead className="text-center">Total Vol (L)</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No data available for the selected date range
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.map((volume, index) => (
+                  <TableRow key={volume.volumeML}>
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-base">
+                        {volume.volumeML}ml
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">{volume.productCount}</TableCell>
+                    <TableCell className="text-center">{volume.billCount}</TableCell>
+                    <TableCell className="text-center font-semibold">{volume.totalQuantity}</TableCell>
+                    <TableCell className="text-center">
+                      {(volume.totalVolumeML / 1000).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      ₹{volume.totalAmount.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

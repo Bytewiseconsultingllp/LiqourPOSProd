@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Product } from '@/types/product';
+import { Customer } from '@/types/customer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Minus, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface QuantityDialogProps {
   product: Product | null;
+  customer: Customer | null;
   open: boolean;
   onClose: () => void;
   onConfirm: (quantity: number, discount: number) => void;
@@ -17,6 +20,7 @@ interface QuantityDialogProps {
 
 export function QuantityDialog({
   product,
+  customer,
   open,
   onClose,
   onConfirm,
@@ -25,6 +29,11 @@ export function QuantityDialog({
 }: QuantityDialogProps) {
   const [quantity, setQuantity] = useState(initialQuantity);
   const [discount, setDiscount] = useState(initialDiscount);
+
+  // Calculate max discount per bottle based on customer's maxDiscountPercentage
+  const maxDiscountPerBottle = product && customer && customer.maxDiscountPercentage
+    ? (product.pricePerUnit * customer.maxDiscountPercentage) / 100
+    : product?.pricePerUnit || 0;
 
   useEffect(() => {
     if (open) {
@@ -115,13 +124,29 @@ export function QuantityDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Discount per Bottle (₹)</Label>
+            <div className="flex items-center justify-between">
+              <Label className="font-semibold">Discount per Bottle (₹)</Label>
+              {customer && customer.maxDiscountPercentage && customer.maxDiscountPercentage < 100 && (
+                <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full font-medium">
+                  Max: {customer.maxDiscountPercentage}% (₹{maxDiscountPerBottle.toFixed(2)})
+                </span>
+              )}
+            </div>
             <Input
               type="number"
               value={discount}
-              onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+              onChange={(e) => {
+                const value = Math.max(0, parseFloat(e.target.value) || 0);
+                if (value > maxDiscountPerBottle) {
+                  toast.error(`Discount per bottle cannot exceed ${customer?.maxDiscountPercentage || 100}% (₹${maxDiscountPerBottle.toFixed(2)})`);
+                  setDiscount(maxDiscountPerBottle);
+                } else {
+                  setDiscount(value);
+                }
+              }}
               placeholder="0"
               min="0"
+              max={maxDiscountPerBottle}
             />
           </div>
 

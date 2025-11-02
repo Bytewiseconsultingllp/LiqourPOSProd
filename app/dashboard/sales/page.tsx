@@ -12,6 +12,7 @@ import {
   User,
   Wallet,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useMemo, useState, useEffect } from "react";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
@@ -115,7 +116,7 @@ const Index = () => {
     setQuantityDialogOpen(true);
   };
 
-  const handleQuantityConfirm = (quantity: number, discount: number) => {
+  const handleQuantityConfirm = (quantity: number, discountPerBottle: number) => {
     if (!selectedProduct) return;
 
     if (editingItem) {
@@ -123,9 +124,17 @@ const Index = () => {
         prev.map((item) => {
           if (item._id === editingItem._id) {
             const subTotal = item.rate * quantity;
-            const discountAmount = discount || 0;
-            const finalAmount = subTotal - discountAmount;
-            return { ...item, quantity, discountAmount, subTotal, finalAmount };
+            const itemDiscountAmount = discountPerBottle || 0;
+            const totalDiscount = itemDiscountAmount * quantity;
+            const finalAmount = subTotal - totalDiscount;
+            return { 
+              ...item, 
+              quantity, 
+              itemDiscountAmount,
+              discountAmount: totalDiscount,
+              subTotal, 
+              finalAmount 
+            };
           }
           return item;
         })
@@ -140,12 +149,14 @@ const Index = () => {
             if (item._id === selectedProduct._id) {
               const newQuantity = item.quantity + quantity;
               const subTotal = item.rate * newQuantity;
-              const discountAmount = discount || 0;
-              const finalAmount = subTotal - discountAmount;
+              const itemDiscountAmount = discountPerBottle || 0;
+              const totalDiscount = itemDiscountAmount * newQuantity;
+              const finalAmount = subTotal - totalDiscount;
               return {
                 ...item,
                 quantity: newQuantity,
-                discountAmount,
+                itemDiscountAmount,
+                discountAmount: totalDiscount,
                 subTotal,
                 finalAmount,
               };
@@ -155,8 +166,9 @@ const Index = () => {
         );
       } else {
         const subTotal = selectedProduct.pricePerUnit * quantity;
-        const discountAmount = discount || 0;
-        const finalAmount = subTotal - discountAmount;
+        const itemDiscountAmount = discountPerBottle || 0;
+        const totalDiscount = itemDiscountAmount * quantity;
+        const finalAmount = subTotal - totalDiscount;
 
         const newCartItem: CartItem = {
           _id: selectedProduct._id,
@@ -170,7 +182,8 @@ const Index = () => {
           volumePerUnitML: selectedProduct.volumeML,
           rate: selectedProduct.pricePerUnit,
           subTotal,
-          discountAmount,
+          itemDiscountAmount,
+          discountAmount: totalDiscount,
           finalAmount,
           vatAmount: selectedProduct.taxInfo?.vat,
           tcsAmount: selectedProduct.taxInfo?.tcs,
@@ -210,7 +223,7 @@ const Index = () => {
 
       // Calculate discount breakdown
       const itemDiscounts = cartItems.reduce(
-        (sum, item) => sum + (item.itemDiscountAmount || 0),
+        (sum, item) => sum + ((item.itemDiscountAmount || 0) * item.quantity),
         0
       );
 
@@ -271,17 +284,22 @@ const Index = () => {
       }
 
       // Show success message
-      alert(data.message + (data.data.message ? '\n' + data.data.message : ''));
+      toast.success(data.message || 'Sale completed successfully!');
+      if (data.data.message) {
+        toast.info(data.data.message);
+      }
 
       // Reset cart and state
       setCartItems([]);
-      setSelectedCustomer(null);
+      // Auto-select walk-in customer after sale
+      const walkInCustomer = customers.find(c => c._id === "walk-in");
+      setSelectedCustomer(walkInCustomer || null);
 
       // Refresh recent sales
       fetchRecentSales();
       refetchProducts();
     } catch (error: any) {
-      alert('Error: ' + (error.message || 'Failed to complete sale'));
+      toast.error(error.message || 'Failed to complete sale');
     }
   };
 
@@ -321,15 +339,33 @@ const Index = () => {
     }
   };
 
-  // Fetch recent sales on mount and auto-select walk-in customer
+  // Fetch recent sales on mount
   useEffect(() => {
     fetchRecentSales();
-    
-    // Auto-select walk-in customer if no customer is selected
-    if (!selectedCustomer && customers.length > 0) {
-      const walkInCustomer = customers.find(c => c._id === "walk-in");
+  }, []);
+
+  // Auto-select walk-in customer when customers load (only once)
+  useEffect(() => {
+    if (customers.length > 0 && !selectedCustomer) {
+      const walkInCustomer = customers.find(c => c._id === "walk-in" || c.name === "Walk-in Customer");
       if (walkInCustomer) {
         setSelectedCustomer(walkInCustomer);
+      } else {
+        // Create walk-in customer if not found
+        const walkIn: Customer = {
+          _id: 'walk-in',
+          name: 'Walk-in Customer',
+          type: 'Walk-In',
+          contactInfo: { phone: '', email: '', address: '' },
+          creditLimit: 0,
+          outstandingBalance: 0,
+          walletBalance: 0,
+          isActive: true,
+          organizationId: '',
+          createdAt: new Date().toISOString(),
+          maxDiscountPercentage: 100,
+        };
+        setSelectedCustomer(walkIn);
       }
     }
   }, [customers]);
@@ -537,6 +573,7 @@ const Index = () => {
       {/* Dialogs */}
       <QuantityDialog
         product={selectedProduct}
+        customer={selectedCustomer}
         open={quantityDialogOpen}
         onClose={() => setQuantityDialogOpen(false)}
         onConfirm={handleQuantityConfirm}

@@ -8,11 +8,12 @@ const updateCustomerSchema = z.object({
   type: z.enum(['Retail', 'Wholesale', 'Walk-In', 'B2B']).optional(),
   contactInfo: z.object({
     phone: z.string().optional(),
-    email: z.string().email().optional(),
+    email: z.string().optional(),
     address: z.string().optional(),
     gstin: z.string().optional(),
   }).optional(),
   maxDiscountPercentage: z.number().min(0).max(100).optional(),
+  walletBalance: z.number().min(0).optional(),
   creditLimit: z.number().min(0).optional(),
   outstandingBalance: z.number().min(0).optional(),
   notes: z.string().optional(),

@@ -25,6 +25,7 @@ export default function CustomerManagementPage() {
     pincode: '',
     creditLimit: 0,
     walletBalance: 0,
+    maxDiscountPercentage: 10,
     isActive: true,
   });
 
@@ -47,9 +48,14 @@ export default function CustomerManagementPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('accessToken');
-      const orgId = localStorage.getItem('organization') 
-        ? JSON.parse(localStorage.getItem('organization')!).id 
-        : 'default';
+      const organizationData = localStorage.getItem('organization');
+      
+      if (!token || !organizationData) {
+        return;
+      }
+
+      const organization = JSON.parse(organizationData);
+      const orgId = organization._id || organization.id;
 
       const response = await fetch('/api/customers', {
         headers: {
@@ -90,6 +96,7 @@ export default function CustomerManagementPage() {
         pincode: '',
         creditLimit: customer.creditLimit || 0,
         walletBalance: customer.walletBalance || 0,
+        maxDiscountPercentage: customer.maxDiscountPercentage || 10,
         isActive: customer.isActive !== false,
       });
     } else {
@@ -105,6 +112,7 @@ export default function CustomerManagementPage() {
         pincode: '',
         creditLimit: 0,
         walletBalance: 0,
+        maxDiscountPercentage: 10,
         isActive: true,
       });
     }
@@ -127,15 +135,27 @@ export default function CustomerManagementPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const orgId = localStorage.getItem('organization') 
-        ? JSON.parse(localStorage.getItem('organization')!).id 
-        : 'default';
+      const organizationData = localStorage.getItem('organization');
+      
+      if (!token || !organizationData) {
+        showToast('Please login again', 'error');
+        router.push('/login');
+        return;
+      }
+
+      const organization = JSON.parse(organizationData);
+      const orgId = organization._id || organization.id;
 
       const url = editingCustomer 
         ? `/api/customers/${editingCustomer._id}`
         : '/api/customers';
       
       const method = editingCustomer ? 'PUT' : 'POST';
+
+      console.log(`${method} ${url}`, {
+        name: formData.name,
+        maxDiscountPercentage: formData.maxDiscountPercentage,
+      });
 
       const response = await fetch(url, {
         method,
@@ -152,16 +172,15 @@ export default function CustomerManagementPage() {
             email: formData.email,
             address: formData.address,
           },
-          city: formData.city,
-          state: formData.state,
-          pincode: formData.pincode,
           creditLimit: formData.creditLimit,
           walletBalance: formData.walletBalance,
+          maxDiscountPercentage: formData.maxDiscountPercentage,
           isActive: formData.isActive,
         }),
       });
 
       const data = await response.json();
+      console.log('Response:', data);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to save customer');
@@ -175,6 +194,7 @@ export default function CustomerManagementPage() {
       handleCloseModal();
       fetchCustomers();
     } catch (error: any) {
+      console.error('Error saving customer:', error);
       showToast(error.message || 'Failed to save customer', 'error');
     } finally {
       setLoading(false);
@@ -189,9 +209,16 @@ export default function CustomerManagementPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const orgId = localStorage.getItem('organization') 
-        ? JSON.parse(localStorage.getItem('organization')!).id 
-        : 'default';
+      const organizationData = localStorage.getItem('organization');
+      
+      if (!token || !organizationData) {
+        showToast('Please login again', 'error');
+        router.push('/login');
+        return;
+      }
+
+      const organization = JSON.parse(organizationData);
+      const orgId = organization._id || organization.id;
 
       const response = await fetch(`/api/customers/${customer._id}`, {
         method: 'DELETE',
@@ -277,6 +304,7 @@ export default function CustomerManagementPage() {
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase">Contact</th>
                   <th className="px-6 py-4 text-right text-xs font-medium uppercase">Credit Limit</th>
                   <th className="px-6 py-4 text-right text-xs font-medium uppercase">Wallet</th>
+                  <th className="px-6 py-4 text-center text-xs font-medium uppercase">Max Disc%</th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase">Actions</th>
                 </tr>
@@ -284,13 +312,13 @@ export default function CustomerManagementPage() {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {loading && customers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={8} className="px-6 py-12 text-center">
                       <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
                     </td>
                   </tr>
                 ) : filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                       {searchTerm ? 'No customers found' : 'No customers yet'}
                     </td>
                   </tr>
@@ -319,6 +347,11 @@ export default function CustomerManagementPage() {
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-green-600">
                         ₹{customer.walletBalance?.toLocaleString() || 0}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                          {customer.maxDiscountPercentage || 0}%
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
@@ -475,6 +508,19 @@ export default function CustomerManagementPage() {
                     onChange={(e) => setFormData({ ...formData, walletBalance: parseFloat(e.target.value) || 0 })}
                     className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Max Discount (%)</label>
+                  <input
+                    type="number"
+                    value={formData.maxDiscountPercentage}
+                    onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
+                    min="0"
+                    max="100"
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700"
+                    placeholder="0-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Maximum discount percentage allowed for this customer (0-100%)</p>
                 </div>
                 <div className="flex items-center">
                   <label className="flex items-center gap-2">

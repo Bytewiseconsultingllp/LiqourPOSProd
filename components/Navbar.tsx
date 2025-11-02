@@ -96,6 +96,11 @@ export default function Navbar() {
       icon: ShoppingBag,
     },
     {
+      name: 'Inventory',
+      href: '/dashboard/inventory',
+      icon: ShoppingBag,
+    },
+    {
       name: 'Management',
       icon: Settings,
       submenu: [

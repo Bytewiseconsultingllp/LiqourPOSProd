@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth';
-import { getTenantConnection } from '@/lib/tenant-db';
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import { registerAllModels } from '@/lib/model-registry';
 import { getPurchaseModel } from '@/models/Purchase';
 import { getVendorStockModel } from '@/models/VendorStock';
 import { getVendorModel } from '@/models/Vendor';
@@ -95,6 +96,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Register models first
+    registerAllModels();
+    
     const connection = await getTenantConnection(user.organizationId);
     
     // Start transaction
@@ -104,9 +108,9 @@ export async function POST(request: NextRequest) {
     const Purchase = getPurchaseModel(connection);
     const VendorStock = getVendorStockModel(connection);
     const Vendor = getVendorModel(connection);
-
-    // Get Product model dynamically
-    const Product = connection.models.Product || connection.model('Product');
+    
+    // Get Product model using getTenantModel
+    const Product = getTenantModel(connection, 'Product');
 
     // Verify vendor exists
     const vendor = await Vendor.findOne({

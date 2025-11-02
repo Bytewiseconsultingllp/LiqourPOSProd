@@ -227,7 +227,10 @@ export async function POST(request: NextRequest) {
     const totalVolumeML = items.reduce((sum, item) => sum + (item.volumePerUnitML * item.quantity), 0);
     const subTotalAmount = items.reduce((sum, item) => sum + item.subTotal, 0);
     const totalDiscountAmount = items.reduce((sum, item) => sum + (item.discountAmount || 0), 0);
-    const totalAmount = items.reduce((sum, item) => sum + item.finalAmount, 0);
+    
+    // Calculate total amount after all discounts
+    const totalBeforeAdditionalDiscounts = items.reduce((sum, item) => sum + item.finalAmount, 0);
+    const totalAmount = totalBeforeAdditionalDiscounts - (billDiscountAmount || 0) - (promotionDiscountAmount || 0);
     
     // Process each item: validate stock and assign vendors
     const processedItems = [];
@@ -366,6 +369,16 @@ export async function POST(request: NextRequest) {
       }],
       { session }
     );
+    
+    // Update customer outstanding balance if credit payment
+    if (customerType === 'registered' && customerId && payment.creditAmount > 0) {
+      const Customer = getTenantModel(connection, 'Customer');
+      await Customer.findByIdAndUpdate(
+        customerId,
+        { $inc: { outstandingBalance: payment.creditAmount } },
+        { session }
+      );
+    }
     
     // Commit transaction
     await session.commitTransaction();

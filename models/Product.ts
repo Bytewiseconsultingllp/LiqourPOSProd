@@ -16,6 +16,7 @@ export interface IProductDetails {
   reorderLevel?: number;
   morningStock?: number;
   morningStockLastUpdatedDate?: Date;
+  morningStockUpdateDate?: Date;
   eveningStock?: number;
   
   // Pricing
@@ -104,6 +105,9 @@ const ProductDetailsSchema = new Schema<IProductDetails>(
       type: Number,
     },
     morningStockLastUpdatedDate: {
+      type: Date,
+    },
+    morningStockUpdateDate: {
       type: Date,
     },
     eveningStock: {

@@ -48,12 +48,22 @@ export function ShoppingCart({
     0
   );
   const itemDiscounts = items.reduce(
-    (sum, item) => sum + (item.itemDiscountAmount || 0),
+    (sum, item) => sum + ((item.itemDiscountAmount || 0) * item.quantity),
     0
   );
   const totalBeforeRounding = subtotal - itemDiscounts - billDiscount - promotionDiscount;
   const grandTotal = Math.round(totalBeforeRounding);
   const roundOffAmount = grandTotal - totalBeforeRounding;
+
+  // Calculate max discount allowed based on customer's maxDiscountPercentage
+  const maxAllowedDiscount = customer && customer.maxDiscountPercentage 
+    ? (subtotal * customer.maxDiscountPercentage) / 100 
+    : subtotal;
+
+  // Calculate available credit for customer
+  const availableCredit = customer && customer._id !== "walk-in"
+    ? Math.max(0, (customer.creditLimit || 0) - (customer.outstandingBalance || 0))
+    : 0;
 
   const handlePromotionsApplied = (promotions: AppliedPromotion[], totalDiscount: number) => {
     // Filter out invalid promotions (missing required fields)
@@ -277,15 +287,29 @@ export function ShoppingCart({
             <Separator className="my-2" />
 
             <div className="space-y-2">
-              <Label className="text-xs">Additional Discount (₹)</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Additional Discount (₹)</Label>
+                {customer && customer.maxDiscountPercentage && customer.maxDiscountPercentage < 100 && (
+                  <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full font-medium">
+                    Max: {customer.maxDiscountPercentage}% (₹{maxAllowedDiscount.toFixed(2)})
+                  </span>
+                )}
+              </div>
               <Input
                 type="number"
                 value={billDiscount}
-                onChange={(e) =>
-                  setBillDiscount(Math.max(0, parseFloat(e.target.value) || 0))
-                }
+                onChange={(e) => {
+                  const value = Math.max(0, parseFloat(e.target.value) || 0);
+                  if (value > maxAllowedDiscount) {
+                    toast.error(`Discount cannot exceed ${customer?.maxDiscountPercentage || 100}% (₹${maxAllowedDiscount.toFixed(2)})`);
+                    setBillDiscount(maxAllowedDiscount);
+                  } else {
+                    setBillDiscount(value);
+                  }
+                }}
                 placeholder="0"
                 min="0"
+                max={maxAllowedDiscount}
                 className="h-9"
               />
             </div>
@@ -303,6 +327,24 @@ export function ShoppingCart({
           {/* Payment Method */}
           <div className="space-y-3">
             <h3 className="font-semibold text-sm">Payment Method</h3>
+            
+            {/* Customer Credit Info */}
+            {customer && customer._id !== "walk-in" && (
+              <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Credit Limit:</span>
+                  <span className="font-semibold">₹{(customer.creditLimit || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Outstanding:</span>
+                  <span className="font-semibold text-red-600">₹{(customer.outstandingBalance || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t pt-1 mt-1">
+                  <span className="text-muted-foreground">Available Credit:</span>
+                  <span className="font-bold text-green-600">₹{availableCredit.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
 
             <Tabs
               value={paymentMethod}
@@ -393,14 +435,26 @@ export function ShoppingCart({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Credit (₹)</Label>
+                    <Label className="text-xs">
+                      Credit (₹)
+                      {availableCredit > 0 && (
+                        <span className="text-green-600 ml-1">(Max: ₹{availableCredit.toFixed(2)})</span>
+                      )}
+                    </Label>
                     <Input
                       type="number"
                       value={creditAmount}
-                      onChange={(e) =>
-                        setCreditAmount(parseFloat(e.target.value) || 0)
-                      }
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        if (value > availableCredit) {
+                          toast.error(`Credit amount cannot exceed available credit of ₹${availableCredit.toFixed(2)}`);
+                          setCreditAmount(availableCredit);
+                        } else {
+                          setCreditAmount(value);
+                        }
+                      }}
                       min="0"
+                      max={availableCredit}
                       className="h-9"
                     />
                   </div>
