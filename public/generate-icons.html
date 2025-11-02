@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate PWA Icons</title>
+</head>
+<body>
+  <h2>PWA Icon Generator</h2>
+  <p>Right-click on each canvas and "Save image as..."</p>
+  
+  <h3>192x192 Icon</h3>
+  <canvas id="icon192" width="192" height="192"></canvas>
+  
+  <h3>512x512 Icon</h3>
+  <canvas id="icon512" width="512" height="512"></canvas>
+
+  <script>
+    function generateIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#3b82f6');
+      gradient.addColorStop(1, '#2563eb');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Shopping cart icon (simplified)
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.5}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🛒', size / 2, size / 2);
+      
+      // Text
+      ctx.font = `bold ${size * 0.15}px Arial`;
+      ctx.fillText('POS', size / 2, size * 0.8);
+    }
+    
+    generateIcon('icon192', 192);
+    generateIcon('icon512', 512);
+  </script>
+</body>
+</html>

@@ -11,6 +11,7 @@ import {
   Phone,
   User,
   Wallet,
+  Scan,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo, useState, useEffect } from "react";
@@ -24,6 +25,7 @@ import { ProductFilters } from "./ProductFilters";
 import { ProductSearch } from "./ProductSearch";
 import { QuantityDialog } from "./QuantityDialog";
 import { ShoppingCart } from "./ShoppingCart";
+import { Input } from "../components/ui/input";
 
 const Index = () => {
   // Fetch products and customers from API
@@ -53,6 +55,16 @@ const Index = () => {
   const [creditPaymentDialogOpen, setCreditPaymentDialogOpen] = useState(false);
   const [recentSales, setRecentSales] = useState<any[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [billDate, setBillDate] = useState(() => {
+    const date = new Date();
+    date.setHours(4, 5, 0, 0); // Set time to 4:05 AM
+    return date.toISOString();
+  });
+  
+  // Barcode scanner states
+  const [barcodeBuffer, setBarcodeBuffer] = useState('');
+  const [scannerActive, setScannerActive] = useState(true);
+  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -127,13 +139,13 @@ const Index = () => {
             const itemDiscountAmount = discountPerBottle || 0;
             const totalDiscount = itemDiscountAmount * quantity;
             const finalAmount = subTotal - totalDiscount;
-            return { 
-              ...item, 
-              quantity, 
+            return {
+              ...item,
+              quantity,
               itemDiscountAmount,
               discountAmount: totalDiscount,
-              subTotal, 
-              finalAmount 
+              subTotal,
+              finalAmount
             };
           }
           return item;
@@ -207,7 +219,7 @@ const Index = () => {
     try {
       const token = localStorage.getItem("accessToken");
       const organizationData = localStorage.getItem("organization");
-      
+
       if (!token || !organizationData) {
         alert("Please login again");
         return;
@@ -265,6 +277,7 @@ const Index = () => {
         billDiscountAmount: payment.billDiscountAmount || 0,
         promotionDiscountAmount: payment.promotionDiscountAmount || 0,
         appliedPromotions: payment.appliedPromotions || [],
+        saleDate: billDate,
       };
 
       const response = await fetch("/api/sales/create", {
@@ -315,9 +328,9 @@ const Index = () => {
       setSalesLoading(true);
       const token = localStorage.getItem('accessToken');
       const organizationData = localStorage.getItem('organization');
-      
+
       if (!token || !organizationData) return;
-      
+
       const organization = JSON.parse(organizationData);
       const orgId = organization._id || organization.id;
 
@@ -370,6 +383,159 @@ const Index = () => {
     }
   }, [customers]);
 
+  // Barcode scanner: Auto-sleep after 5 minutes of inactivity
+  useEffect(() => {
+    const checkInactivity = setInterval(() => {
+      const inactiveTime = Date.now() - lastActivityTime;
+      const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+      
+      if (inactiveTime >= fiveMinutes && scannerActive) {
+        setScannerActive(false);
+        toast.info('Barcode scanner sleeping due to inactivity');
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(checkInactivity);
+  }, [lastActivityTime, scannerActive]);
+
+  // Barcode scanner: Wake up on any activity
+  useEffect(() => {
+    const handleActivity = () => {
+      setLastActivityTime(Date.now());
+      if (!scannerActive) {
+        setScannerActive(true);
+        toast.success('Barcode scanner activated');
+      }
+    };
+
+    // Listen for mouse movement, clicks, and keyboard activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+    };
+  }, [scannerActive]);
+
+  // Barcode scanner: Listen for barcode input
+  useEffect(() => {
+    if (!scannerActive) return;
+
+    let timeout: NodeJS.Timeout;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input field
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Enter key means barcode scan is complete
+      if (e.key === 'Enter' && barcodeBuffer.length > 0) {
+        e.preventDefault();
+        handleBarcodeScanned(barcodeBuffer);
+        setBarcodeBuffer('');
+        clearTimeout(timeout);
+        return;
+      }
+
+      // Build barcode buffer
+      if (e.key.length === 1) {
+        setBarcodeBuffer(prev => prev + e.key);
+        
+        // Clear buffer after 100ms of no input (barcode scanners are fast)
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          setBarcodeBuffer('');
+        }, 100);
+      }
+    };
+
+    window.addEventListener('keypress', handleKeyPress);
+    return () => {
+      window.removeEventListener('keypress', handleKeyPress);
+      clearTimeout(timeout);
+    };
+  }, [scannerActive, barcodeBuffer, products, cartItems]);
+
+  // Handle barcode scanned
+  const handleBarcodeScanned = (barcode: string) => {
+    // Find product by SKU or barcode
+    const product = products.find(
+      p => p.sku?.toLowerCase() === barcode.toLowerCase() || 
+           p.barcode?.toLowerCase() === barcode.toLowerCase() ||
+           p._id === barcode
+    );
+
+    if (!product) {
+      toast.error(`Product not found for barcode: ${barcode}`);
+      return;
+    }
+
+    if (product.currentStock <= 0) {
+      toast.error(`${product.name} is out of stock`);
+      return;
+    }
+
+    // Check if product already in cart
+    const existingItem = cartItems.find(item => item.productId === product._id);
+    
+    if (existingItem) {
+      // Increment quantity
+      setCartItems(prev =>
+        prev.map(item => {
+          if (item.productId === product._id) {
+            const newQuantity = item.quantity + 1;
+            const subTotal = item.rate * newQuantity;
+            const itemDiscountAmount = item.itemDiscountAmount || 0;
+            const totalDiscount = itemDiscountAmount * newQuantity;
+            const finalAmount = subTotal - totalDiscount;
+            
+            toast.success(`${product.name} quantity updated to ${newQuantity}`);
+            
+            return {
+              ...item,
+              quantity: newQuantity,
+              discountAmount: totalDiscount,
+              subTotal,
+              finalAmount,
+            };
+          }
+          return item;
+        })
+      );
+    } else {
+      // Add new item to cart with quantity 1
+      const subTotal = product.pricePerUnit;
+      const finalAmount = subTotal;
+
+      const newCartItem: CartItem = {
+        _id: product._id,
+        productId: product._id,
+        vendorId: "",
+        billId: 0,
+        productName: product.name,
+        brand: product.brand,
+        category: product.category,
+        quantity: 1,
+        volumePerUnitML: product.volumeML,
+        rate: product.pricePerUnit,
+        subTotal,
+        itemDiscountAmount: 0,
+        discountAmount: 0,
+        finalAmount,
+        vatAmount: product.taxInfo?.vat,
+        tcsAmount: product.taxInfo?.tcs,
+      };
+
+      setCartItems(prev => [...prev, newCartItem]);
+      toast.success(`${product.name} added to cart`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-6">
@@ -380,15 +546,41 @@ const Index = () => {
             selectedCustomer={selectedCustomer}
             onSelectCustomer={setSelectedCustomer}
           />
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setCreditPaymentDialogOpen(true)}
-            disabled={!selectedCustomer || selectedCustomer._id === "walk-in"}
-          >
-            <CreditCard className="h-4 w-4" />
-            Record Credit Payment
-          </Button>
+          {selectedCustomer && selectedCustomer.type != 'Walk-In' && (
+            <Input 
+              type="date" 
+              value={billDate.slice(0, 10)} 
+              onChange={(e) => {
+                const selectedDate = new Date(e.target.value);
+                selectedDate.setHours(4, 5, 0, 0); // Always set time to 4:05 AM
+                setBillDate(selectedDate.toISOString());
+              }} 
+              min={products.at(0)?.morningStockLastUpdatedDate ? products.at(0)?.morningStockLastUpdatedDate?.slice(0, 10) : new Date().toISOString().slice(0, 10)} 
+            />
+          )}
+          <div className="flex items-center gap-2">
+            {/* Barcode Scanner Status Indicator */}
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+              scannerActive 
+                ? 'bg-green-50 border-green-200 text-green-700' 
+                : 'bg-gray-50 border-gray-200 text-gray-500'
+            }`}>
+              <Scan className={`h-4 w-4 ${scannerActive ? 'animate-pulse' : ''}`} />
+              <span className="text-sm font-medium">
+                Scanner: {scannerActive ? 'Active' : 'Sleeping'}
+              </span>
+            </div>
+            
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setCreditPaymentDialogOpen(true)}
+              disabled={!selectedCustomer || selectedCustomer._id === "walk-in"}
+            >
+              <CreditCard className="h-4 w-4" />
+              Record Credit Payment
+            </Button>
+          </div>
         </div>
 
         {/* Customer Details Card */}
@@ -414,7 +606,7 @@ const Index = () => {
                     </div>
                   </div>
                 )}
-                {selectedCustomer._id !== "walk-in" && (
+                {selectedCustomer._id !== "walk-in" && selectedCustomer.type != 'Walk-In' && (
                   <div className="flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -548,12 +740,11 @@ const Index = () => {
                         <td className="px-4 py-3 text-sm">{(sale.totalVolumeML / 1000).toFixed(2)}L</td>
                         <td className="px-4 py-3 text-sm text-right font-semibold">₹{sale.totalAmount?.toFixed(2)}</td>
                         <td className="px-4 py-3 text-sm">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            sale.payment?.mode === 'Cash' ? 'bg-green-100 text-green-800' :
-                            sale.payment?.mode === 'Online' ? 'bg-blue-100 text-blue-800' :
-                            sale.payment?.mode === 'Credit' ? 'bg-orange-100 text-orange-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${sale.payment?.mode === 'Cash' ? 'bg-green-100 text-green-800' :
+                              sale.payment?.mode === 'Online' ? 'bg-blue-100 text-blue-800' :
+                                sale.payment?.mode === 'Credit' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-gray-100 text-gray-800'
+                            }`}>
                             {sale.payment?.mode || 'N/A'}
                           </span>
                         </td>

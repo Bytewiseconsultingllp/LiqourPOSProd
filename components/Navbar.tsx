@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -31,6 +31,9 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const managementMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load user and organization from localStorage
@@ -40,6 +43,10 @@ export default function Navbar() {
     if (userData) {
       try {
         setUser(JSON.parse(userData));
+        // Reset dropdowns when user logs in
+        setUserMenuOpen(false);
+        setManagementMenuOpen(false);
+        setIsOpen(false);
       } catch (e) {
         console.error('Error parsing user data:', e);
       }
@@ -61,7 +68,34 @@ export default function Navbar() {
     }
   }, [pathname]);
 
+  // Reset dropdown states when navigating to dashboard or any other page
+  useEffect(() => {
+    setUserMenuOpen(false);
+    setManagementMenuOpen(false);
+  }, [pathname]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+      if (managementMenuRef.current && !managementMenuRef.current.contains(event.target as Node)) {
+        setManagementMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = async () => {
+    // Close all dropdowns immediately
+    setUserMenuOpen(false);
+    setManagementMenuOpen(false);
+    setIsOpen(false);
     setIsLoggingOut(true);
 
     // Simulate a small delay for better UX
@@ -71,6 +105,11 @@ export default function Navbar() {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.removeItem('organization');
+
+    // Reset all states before redirecting
+    setUserMenuOpen(false);
+    setManagementMenuOpen(false);
+    setIsOpen(false);
 
     router.push('/login');
   };
@@ -146,12 +185,12 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-1">
             {navLinks.map((link) => (
               link.submenu ? (
-                <div key={link.name} className="relative">
+                <div key={link.name} className="relative" ref={managementMenuRef}>
                   <button
                     onClick={() => setManagementMenuOpen(!managementMenuOpen)}
                     className={`flex items-center space-x-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${pathname?.startsWith('/dashboard/management')
-                        ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }`}
                   >
                     <link.icon className="w-4 h-4" />
@@ -167,8 +206,8 @@ export default function Navbar() {
                           href={sublink.href}
                           onClick={() => setManagementMenuOpen(false)}
                           className={`flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${isActive(sublink.href)
-                              ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                             }`}
                         >
                           <sublink.icon className="w-4 h-4" />
@@ -183,8 +222,8 @@ export default function Navbar() {
                   key={link.name}
                   href={link.href}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(link.href)
-                      ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                 >
                   <link.icon className="w-4 h-4" />
@@ -197,7 +236,7 @@ export default function Navbar() {
           {/* User Menu */}
           <div className="flex items-center space-x-4">
             {/* User Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -250,7 +289,7 @@ export default function Navbar() {
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
 
                   <button
-                    onClick={handleLogout}
+                    onClick={(e) => { e.stopPropagation(); setUserMenuOpen(false); handleLogout() }}
                     className="flex items-center space-x-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-full"
                   >
                     <LogOut className="w-4 h-4" />
@@ -300,8 +339,8 @@ export default function Navbar() {
                             setManagementMenuOpen(false);
                           }}
                           className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${isActive(sublink.href)
-                              ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                             }`}
                         >
                           <sublink.icon className="w-4 h-4" />
@@ -317,8 +356,8 @@ export default function Navbar() {
                   href={link.href}
                   onClick={() => setIsOpen(false)}
                   className={`flex items-center space-x-3 px-4 py-3 rounded-lg ${isActive(link.href)
-                      ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                 >
                   <link.icon className="w-5 h-5" />
