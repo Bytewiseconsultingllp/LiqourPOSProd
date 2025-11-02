@@ -48,7 +48,7 @@ export async function getTenantConnection(organizationId: string): Promise<Conne
     let finalUri = tenantUri;
     if (!finalUri.includes('ssl=') && !finalUri.includes('tls=')) {
       const separator = finalUri.includes('?') ? '&' : '?';
-      finalUri = `${finalUri}${separator}ssl=true`;
+      finalUri = `${finalUri}${separator}ssl=true&authSource=admin`;
     }
 
     const connection = mongoose.createConnection(finalUri, {
@@ -56,13 +56,14 @@ export async function getTenantConnection(organizationId: string): Promise<Conne
       maxPoolSize: 10,
       minPoolSize: 2,
       socketTimeoutMS: 45000,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 30000,
+      connectTimeoutMS: 30000,
       // SSL/TLS Configuration
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      tlsAllowInvalidHostnames: false,
+      ssl: true,
       retryWrites: true,
       retryReads: true,
+      w: 'majority' as const,
+      readPreference: 'primaryPreferred' as const,
     });
 
     // Wait for connection to be ready

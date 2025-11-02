@@ -31,21 +31,29 @@ export async function connectToDatabase() {
   }
 
   if (!cached.promise) {
+    // Ensure URI has ssl=true parameter
+    let connectionUri = MONGODB_URI;
+    if (!connectionUri.includes('ssl=') && !connectionUri.includes('tls=')) {
+      const separator = connectionUri.includes('?') ? '&' : '?';
+      connectionUri = `${connectionUri}${separator}ssl=true&authSource=admin`;
+    }
+
     const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
       minPoolSize: 2,
       socketTimeoutMS: 45000,
-      serverSelectionTimeoutMS: 10000,
-      // SSL/TLS Configuration
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      tlsAllowInvalidHostnames: false,
+      serverSelectionTimeoutMS: 30000, // Increased to 30 seconds
+      connectTimeoutMS: 30000,
+      // SSL/TLS Configuration - Try with less strict validation for Atlas
+      ssl: true,
       retryWrites: true,
       retryReads: true,
+      w: 'majority' as const,
+      readPreference: 'primaryPreferred' as const,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts);
+    cached.promise = mongoose.connect(connectionUri, opts);
   }
 
   try {
@@ -75,20 +83,27 @@ export async function getTenantConnection(tenantId: string): Promise<typeof mong
 
   // Create new connection for tenant
   const dbName = `tenant_${tenantId}`;
-  const tenantUri = MONGODB_URI.replace(/\/[^/]*$/, `/${dbName}`);
+  let tenantUri = MONGODB_URI.replace(/\/[^/]*(\?|$)/, `/${dbName}$1`);
+  
+  // Ensure URI has ssl=true parameter
+  if (!tenantUri.includes('ssl=') && !tenantUri.includes('tls=')) {
+    const separator = tenantUri.includes('?') ? '&' : '?';
+    tenantUri = `${tenantUri}${separator}ssl=true&authSource=admin`;
+  }
   
   const connection = await mongoose.createConnection(tenantUri, {
     bufferCommands: false,
     maxPoolSize: 10,
     minPoolSize: 2,
     socketTimeoutMS: 45000,
-    serverSelectionTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 30000,
+    connectTimeoutMS: 30000,
     // SSL/TLS Configuration
-    tls: true,
-    tlsAllowInvalidCertificates: false,
-    tlsAllowInvalidHostnames: false,
+    ssl: true,
     retryWrites: true,
     retryReads: true,
+    w: 'majority' as const,
+    readPreference: 'primaryPreferred' as const,
   }).asPromise();
 
   tenantConnections.set(tenantId, connection as unknown as typeof mongoose);
