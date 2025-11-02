@@ -26,7 +26,7 @@ export function CalculationCard({ subtotal, vat, tcs, grandTotal }: CalculationC
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">TCS (1%)</span>
-          <span className="font-medium text-accent">₹{tcs.toFixed(2)}</span>
+          <span className="font-medium text-warning">₹{tcs.toFixed(2)}</span>
         </div>
         <Separator />
         <div className="flex justify-between">

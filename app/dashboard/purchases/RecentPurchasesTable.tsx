@@ -25,6 +25,7 @@ export function RecentPurchasesTable({ purchases }: RecentPurchasesTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Purchase ID</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Vendor</TableHead>
               <TableHead>Items</TableHead>
@@ -44,6 +45,7 @@ export function RecentPurchasesTable({ purchases }: RecentPurchasesTableProps) {
             ) : (
               currentPurchases.map((purchase) => (
                 <TableRow key={purchase._id}>
+                  <TableCell>{purchase._id}</TableCell>
                   <TableCell className="font-medium">
                     {format(new Date(purchase.purchaseDate), "dd/MM/yyyy HH:mm")}
                   </TableCell>
@@ -60,7 +62,7 @@ export function RecentPurchasesTable({ purchases }: RecentPurchasesTableProps) {
                   <TableCell className="text-right text-warning">
                     ₹{purchase.taxAmount.toFixed(2)}
                   </TableCell>
-                  <TableCell className="text-right text-accent">
+                  <TableCell className="text-right text-warning">
                     ₹{purchase.taxAmount.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right font-semibold text-primary">

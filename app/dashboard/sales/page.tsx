@@ -12,6 +12,9 @@ import {
   User,
   Wallet,
   Scan,
+  Eye,
+  FileText,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo, useState, useEffect } from "react";
@@ -26,6 +29,8 @@ import { ProductSearch } from "./ProductSearch";
 import { QuantityDialog } from "./QuantityDialog";
 import { ShoppingCart } from "./ShoppingCart";
 import { Input } from "../components/ui/input";
+import { ThermalBillPrint } from "@/components/ThermalBillPrint";
+import { SubBillsViewer } from "@/components/SubBillsViewer";
 
 const Index = () => {
   // Fetch products and customers from API
@@ -60,6 +65,9 @@ const Index = () => {
     date.setHours(4, 5, 0, 0); // Set time to 4:05 AM
     return date.toISOString();
   });
+  const [viewingBill, setViewingBill] = useState<any | null>(null);
+  const [viewBillType, setViewBillType] = useState<'main' | 'sub'>('main');
+  const [viewingSubBills, setViewingSubBills] = useState<any | null>(null);
   
   // Barcode scanner states
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
@@ -302,6 +310,14 @@ const Index = () => {
         toast.info(data.data.message);
       }
 
+      // Show bill print option
+      if (data.data.sale) {
+        const shouldPrint = window.confirm('Sale completed! Would you like to print the bill?');
+        if (shouldPrint) {
+          handleViewBill(data.data.sale, 'main');
+        }
+      }
+
       // Reset cart and state
       setCartItems([]);
       // Auto-select walk-in customer after sale
@@ -321,6 +337,23 @@ const Index = () => {
     console.log(
       `Recording credit payment of ₹${amount} for customer ${selectedCustomer?._id}`
     );
+  };
+
+  const handleViewBill = (sale: any, billType: 'main' | 'sub' = 'main') => {
+    setViewingBill(sale);
+    setViewBillType(billType);
+  };
+
+  const handleCloseBillView = () => {
+    setViewingBill(null);
+  };
+
+  const handleViewSubBills = (sale: any) => {
+    setViewingSubBills(sale);
+  };
+
+  const handleCloseSubBills = () => {
+    setViewingSubBills(null);
   };
 
   const fetchRecentSales = async () => {
@@ -721,6 +754,7 @@ const Index = () => {
                       <th className="px-4 py-3 text-right text-sm font-semibold">Total Amount</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Payment</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -751,6 +785,43 @@ const Index = () => {
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {new Date(sale.saleDate || sale.createdAt).toLocaleString()}
                         </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              onClick={() => handleViewBill(sale, 'main')}
+                              title="View Main Bill"
+                            >
+                              <Eye className="h-3 w-3" />
+                              Bill
+                            </Button>
+                            {sale.subBills && sale.subBills.length > 0 ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1 bg-blue-50 border-blue-200 hover:bg-blue-100"
+                                onClick={() => handleViewSubBills(sale)}
+                                title={`View ${sale.subBills.length} Sub-Bills`}
+                              >
+                                <Layers className="h-3 w-3" />
+                                {sale.subBills.length} Sub
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1"
+                                onClick={() => handleViewBill(sale, 'sub')}
+                                title="View Sub Bill"
+                              >
+                                <FileText className="h-3 w-3" />
+                                Sub
+                              </Button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -778,6 +849,23 @@ const Index = () => {
         customer={selectedCustomer}
         onRecordPayment={handleRecordCreditPayment}
       />
+
+      {/* Bill Viewer */}
+      {viewingBill && (
+        <ThermalBillPrint
+          billData={viewingBill}
+          billType={viewBillType}
+          onClose={handleCloseBillView}
+        />
+      )}
+
+      {/* Sub-Bills Viewer */}
+      {viewingSubBills && (
+        <SubBillsViewer
+          sale={viewingSubBills}
+          onClose={handleCloseSubBills}
+        />
+      )}
     </div>
   );
 };

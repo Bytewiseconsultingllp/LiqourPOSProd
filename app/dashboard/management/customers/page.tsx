@@ -339,8 +339,8 @@ export default function CustomerManagementPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        <div>{customer.contactInfo?.phone || '-'}</div>
-                        <div className="text-xs text-gray-500">{customer.contactInfo?.email || ''}</div>
+                        <div>{customer.contactInfo.phone || '-'}</div>
+                        <div className="text-xs text-gray-500">{customer.contactInfo.email || ''}</div>
                       </td>
                       <td className="px-6 py-4 text-right font-medium">
                         ₹{customer.creditLimit?.toLocaleString() || 0}
