@@ -173,7 +173,8 @@ export default function CustomerManagementPage() {
             address: formData.address,
           },
           creditLimit: formData.creditLimit,
-          walletBalance: formData.walletBalance,
+          openingBalance: formData.walletBalance,
+          outstandingBalance:formData.walletBalance,
           maxDiscountPercentage: formData.maxDiscountPercentage,
           isActive: formData.isActive,
         }),
@@ -303,8 +304,10 @@ export default function CustomerManagementPage() {
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase">Type</th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase">Contact</th>
                   <th className="px-6 py-4 text-right text-xs font-medium uppercase">Credit Limit</th>
-                  <th className="px-6 py-4 text-right text-xs font-medium uppercase">Wallet</th>
+                  <th className="px-6 py-4 text-right text-xs font-medium uppercase">opening Balance</th>
+                  <th className="px-6 py-4 text-right text-xs font-medium uppercase">Balance due</th>
                   <th className="px-6 py-4 text-center text-xs font-medium uppercase">Max Disc%</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium uppercase">created on</th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-medium uppercase">Actions</th>
                 </tr>
@@ -345,13 +348,19 @@ export default function CustomerManagementPage() {
                       <td className="px-6 py-4 text-right font-medium">
                         ₹{customer.creditLimit?.toLocaleString() || 0}
                       </td>
+                      <td className="px-6 py-4 text-right font-medium">
+                        ₹{customer.openingBalance?.toLocaleString() || 0}
+                      </td>
                       <td className="px-6 py-4 text-right font-medium text-green-600">
-                        ₹{customer.walletBalance?.toLocaleString() || 0}
+                        ₹{customer.outstandingBalance?.toLocaleString() || 0}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
                           {customer.maxDiscountPercentage || 0}%
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-right font-medium text-green-600">
+                        {customer.createdAt?.split('T')[0] || 0}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
@@ -501,7 +510,7 @@ export default function CustomerManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Wallet Balance (₹)</label>
+                  <label className="block text-sm font-medium mb-2">Opening Balance (₹)</label>
                   <input
                     type="number"
                     value={formData.walletBalance}

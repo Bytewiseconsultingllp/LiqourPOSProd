@@ -103,7 +103,7 @@ export default function DashboardPage() {
 
           {/* Products */}
           <a
-            href="/dashboard/management/purchases"
+            href="/dashboard/purchases"
             className="block p-6 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow"
           >
             <div className="flex items-center justify-between mb-4">
