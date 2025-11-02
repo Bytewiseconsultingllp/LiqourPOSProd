@@ -9,20 +9,33 @@ export default function Home() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    console.log('🔍 PWA Install Check Started');
+    
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('✅ App already installed');
       setIsInstalled(true);
       return;
     }
 
     // Listen for install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('🎉 beforeinstallprompt event fired!');
       e.preventDefault();
       setDeferredPrompt(e);
       setIsInstallable(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    console.log('👂 Listening for beforeinstallprompt event...');
+
+    // Check PWA requirements
+    setTimeout(() => {
+      console.log('📋 PWA Status Check:');
+      console.log('  - HTTPS:', window.location.protocol === 'https:' || window.location.hostname === 'localhost');
+      console.log('  - Service Worker:', 'serviceWorker' in navigator);
+      console.log('  - Manifest:', document.querySelector('link[rel="manifest"]') !== null);
+    }, 1000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
