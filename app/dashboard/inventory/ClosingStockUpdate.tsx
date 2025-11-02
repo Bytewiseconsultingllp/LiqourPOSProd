@@ -505,10 +505,10 @@ export function ClosingStockUpdate() {
                         <p className="text-xs text-muted-foreground mb-1">Sales</p>
                         <p className="text-lg font-semibold text-red-600">-{sales}</p>
                       </div>
-                      <div>
+                      {/* <div>
                         <p className="text-xs text-muted-foreground mb-1">Expected</p>
                         <p className="text-lg font-semibold text-blue-600">{expectedStock}</p>
-                      </div>
+                      </div> */}
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Current</p>
                         <p className="text-lg font-semibold">{product.currentStock}</p>
