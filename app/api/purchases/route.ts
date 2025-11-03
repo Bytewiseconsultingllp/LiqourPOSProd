@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
     const totalAmount = subtotal + (taxAmount || 0);
     const dueAmount = totalAmount - (paidAmount || 0);
 
-    let paymentStatus: 'pending' | 'partial' | 'paid' = 'pending';
+    let paymentStatus: 'pending' | 'partial' | 'paid' = 'paid';
     if (paidAmount >= totalAmount) {
       paymentStatus = 'paid';
     } else if (paidAmount > 0) {

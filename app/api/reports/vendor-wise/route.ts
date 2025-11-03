@@ -1,4 +1,5 @@
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 function getUserFromToken(request: NextRequest): any {
@@ -51,33 +52,37 @@ export async function GET(request: NextRequest) {
       },
     }).lean();
 
-    // Group by vendor
-    const vendorMap = new Map();
+    // Group by vendor (use item.vendorId as the key)
+    const vendorMap = new Map<string, any>();
 
     for (const bill of bills) {
-      for (const item of bill.items) {
-        if (!item.vendorId) continue;
+      const billId = (bill as any)._id.toString();
 
-        if (!vendorMap.has(item.vendorId)) {
-          vendorMap.set(item.vendorId, {
-            vendorId: item.vendorId,
+      for (const item of bill.items || []) {
+        const vendorId = item.vendorId;
+        if (!vendorId) continue; // skip if item has no vendor
+
+        if (!vendorMap.has(vendorId)) {
+          vendorMap.set(vendorId, {
+            vendorId,
             vendorName: '',
             totalQuantity: 0,
             totalAmount: 0,
             totalVolumeML: 0,
-            billCount: 0,
-            billIds: new Set(),
-            products: new Map(),
+            billIds: new Set<string>(),
+            products: new Map<string, any>(),
           });
         }
 
-        const vendorData = vendorMap.get(item.vendorId);
-        vendorData.totalQuantity += item.quantity;
-        vendorData.totalAmount += item.finalAmount;
-        vendorData.totalVolumeML += item.quantity * item.volumePerUnitML;
-        vendorData.billIds.add((bill as any)._id.toString());
+        const vendorData = vendorMap.get(vendorId);
 
-        // Track products
+        // Aggregate vendor totals from items
+        vendorData.totalQuantity += item.quantity || 0;
+        vendorData.totalAmount += (item.subTotal || 0) - (item.itemDiscountAmount || 0) - (item.discountAmount || 0)-(item.promotionDiscountAmount || 0);
+        vendorData.totalVolumeML += (item.quantity || 0) * (item.volumePerUnitML || 0);
+        vendorData.billIds.add(billId);
+
+        // Track products under this vendor
         const productKey = item.productId;
         if (!vendorData.products.has(productKey)) {
           vendorData.products.set(productKey, {
@@ -85,24 +90,36 @@ export async function GET(request: NextRequest) {
             productName: item.productName,
             brand: item.brand,
             category: item.category,
-            quantity: 0,
-            volumePerUnitML: item.volumePerUnitML,
-            totalVolumeML: 0,
-            amount: 0,
+            quantity: item.quantity || 0,
+            volumePerUnitML: item.volumePerUnitML || 0,
+            totalVolumeML: (item.quantity || 0) * (item.volumePerUnitML || 0),
+            amount: item.finalAmount || 0,
           });
+        } else {
+          const productData = vendorData.products.get(productKey);
+          productData.quantity += item.quantity || 0;
+          productData.totalVolumeML += (item.quantity || 0) * (item.volumePerUnitML || 0);
+          productData.amount += item.finalAmount || 0;
         }
-
-        const productData = vendorData.products.get(productKey);
-        productData.quantity += item.quantity;
-        productData.totalVolumeML += item.quantity * item.volumePerUnitML;
-        productData.amount += item.finalAmount;
       }
     }
 
+
     // Fetch vendor names
-    const vendorIds = Array.from(vendorMap.keys());
+    const vendorIds = Array.from(vendorMap.keys()).filter(Boolean);
+    // Convert to ObjectId where possible
+    const vendorObjectIds = vendorIds
+      .map((id: any) => {
+        try {
+          return new mongoose.Types.ObjectId(id);
+        } catch {
+          return null;
+        }
+      })
+      .filter((v): v is mongoose.Types.ObjectId => !!v);
+
     const vendors = await Vendor.find({
-      _id: { $in: vendorIds },
+      _id: { $in: vendorObjectIds },
       organizationId: user.organizationId,
     }).lean();
 
@@ -112,7 +129,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Format response
-    const result = Array.from(vendorMap.values()).map((vendor) => ({
+    const result = Array.from(vendorMap.values()).map((vendor: any) => ({
       vendorId: vendor.vendorId,
       vendorName: vendorNameMap.get(vendor.vendorId) || 'Unknown Vendor',
       totalQuantity: vendor.totalQuantity,

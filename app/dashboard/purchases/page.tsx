@@ -588,6 +588,7 @@ const purchaseSchema = z.object({
   productId: z.string().min(1, "Please select a product"),
   carets: z.number().min(0, "Carets must be 0 or more"),
   pieces: z.number().min(0, "Pieces must be 0 or more"),
+  invoiceNumber: z.string().min(1, "Please enter an invoice number"),
   pricePerCaret: z.number().min(0.01, "Price must be greater than 0"),
 }).refine((data) => data.carets > 0 || data.pieces > 0, {
   message: "Please enter at least one caret or piece",
@@ -621,6 +622,7 @@ const Index = () => {
       productId: "",
       carets: 0,
       pieces: 0,
+      invoiceNumber: "",
       pricePerCaret: 0,
     },
   });
@@ -630,6 +632,7 @@ const Index = () => {
   const watchCarets = watch("carets");
   const watchPieces = watch("pieces");
   const watchPrice = watch("pricePerCaret");
+  const watchInvoiceNumber = watch("invoiceNumber");
 
   // Fetch data on mount
   useEffect(() => {
@@ -801,6 +804,14 @@ const Index = () => {
       });
       return;
     }
+    if (!watchInvoiceNumber) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter an invoice number",
+      });
+      return;
+    }
 
     if (currentItems.length === 0) {
       toast({
@@ -833,6 +844,7 @@ const Index = () => {
           })),
           taxAmount: vat + tcs,
           paidAmount: 0,
+          invoiceNumber: watchInvoiceNumber,
         }),
       });
 
@@ -887,7 +899,7 @@ const Index = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-3">
                     <div className="space-y-2">
                       <Label htmlFor="vendor">Vendor *</Label>
                       <VendorSelect
@@ -900,6 +912,18 @@ const Index = () => {
                       />
                       {errors.vendorId && (
                         <p className="text-sm text-destructive">{errors.vendorId.message}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="invoiceNumber">Invoice Number *</Label>
+                      <Input
+                        id="invoiceNumber"
+                        type="text"
+                        value={watchInvoiceNumber}
+                        onChange={(e) => setValue("invoiceNumber", e.target.value)}
+                      />
+                      {errors.invoiceNumber && (
+                        <p className="text-sm text-destructive">{errors.invoiceNumber.message}</p>
                       )}
                     </div>
                     <div className="space-y-2">

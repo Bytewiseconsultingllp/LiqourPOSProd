@@ -211,6 +211,19 @@ export function ClosingStockUpdateTable() {
 
   const handleClosingStockChange = (productId: string, value: string) => {
     const numValue = value === '' ? 0 : parseInt(value) || 0;
+    // Pre-calculate discrepancy with the new input to prevent negative
+    const product = products.find(p => p._id === productId);
+    if (product) {
+      const morningStock = product.morningStock || 0;
+      const sales = salesData.get(product._id) || 0;
+      const purchases = purchaseData.get(product._id) || 0;
+      const rawDiscrepancy = morningStock !== 0
+        ? ((morningStock - sales) + purchases) - numValue
+        : (purchases - sales) - numValue;
+      if (rawDiscrepancy < 0) {
+        toast.error(`Discrepancy cannot be negative for ${product.name}. Please adjust closing stock.`);
+      }
+    }
     setClosingStocks(new Map(closingStocks.set(productId, numValue)));
   };
 
@@ -224,16 +237,25 @@ export function ClosingStockUpdateTable() {
 
   const calculateDiscrepancy = (product: Product): number => {
     const closingStock = closingStocks.get(product._id) ?? product.currentStock;
-    const expectedStock = calculateExpectedStock(product);
+    const morningStock = product.morningStock || 0;
+    const sales = salesData.get(product._id) || 0;
+    const purchases = purchaseData.get(product._id) || 0;
     
-    return closingStock - expectedStock;
+    // If morning stock is not zero: ((morningStock - sales) + purchases) - closingStock
+    // If morning stock is zero: (purchases - sales) - closingStock
+    if (morningStock !== 0) {
+      return ((morningStock - sales) + purchases) - closingStock;
+    } else {
+      return (purchases - sales) - closingStock;
+    }
   };
 
   const getClosingStockItems = (): ClosingStockItem[] => {
     return filteredProducts.map(product => {
       const closingStock = closingStocks.get(product._id) ?? product.currentStock;
       const expectedStock = calculateExpectedStock(product);
-      const discrepancy = closingStock - expectedStock;
+      const rawDiscrepancy = calculateDiscrepancy(product);
+      const discrepancy = Math.max(0, rawDiscrepancy);
       const discrepancyValue = Math.abs(discrepancy) * product.pricePerUnit;
       const sales = salesData.get(product._id) || 0;
       const purchases = purchaseData.get(product._id) || 0;
@@ -273,6 +295,14 @@ export function ClosingStockUpdateTable() {
 
       const organization = JSON.parse(orgData);
       const orgId = organization._id || organization.id;
+
+      // Block submission if any product has negative discrepancy
+      const hasNegative = filteredProducts.some((product) => calculateDiscrepancy(product) < 0);
+      if (hasNegative) {
+        toast.error('Submission blocked: One or more products have negative discrepancy. Please adjust closing stock.');
+        setSubmitting(false);
+        return;
+      }
 
       // Calculate bill date: toDate at 3:59:59.999 AM
       const billDate = new Date(toDate);
@@ -450,7 +480,8 @@ export function ClosingStockUpdateTable() {
               {filteredProducts.map((product, index) => {
                 const closingStock = closingStocks.get(product._id) ?? product.currentStock;
                 const expectedStock = calculateExpectedStock(product);
-                const discrepancy = closingStock - expectedStock;
+                const rawDiscrepancy = calculateDiscrepancy(product);
+                const discrepancy = Math.max(0, rawDiscrepancy);
                 const sales = salesData.get(product._id) || 0;
                 const purchases = purchaseData.get(product._id) || 0;
                 const discrepancyValue = Math.abs(discrepancy) * product.pricePerUnit;

@@ -32,6 +32,52 @@ interface VendorSales {
   }[];
 }
 
+interface CategorySales {
+  category: string;
+  subTotal: number;
+  discount: number;
+  finalAmount: number;
+  cashAmount: number;
+  onlineAmount: number;
+  creditAmount: number;
+}
+
+interface CreditGiven {
+  customerId: string;
+  customerName: string;
+  creditAmount: number;
+}
+
+interface CreditCollected {
+  totalAmount: number;
+  cashAmount: number;
+  onlineAmount: number;
+  customerWise: {
+    customerId: string;
+    customerName: string;
+    totalAmount: number;
+    cashAmount: number;
+    onlineAmount: number;
+  }[];
+}
+
+interface Expenses {
+  totalAmount: number;
+  cashAmount: number;
+  onlineAmount: number;
+  byCategory: {
+    category: string;
+    amount: number;
+  }[];
+}
+
+interface Verification {
+  totalSalesReceived: number;
+  totalExpenses: number;
+  totalCreditCollected: number;
+  netCashFlow: number;
+}
+
 interface QuickReportData {
   reportDate: string;
   period: {
@@ -39,9 +85,13 @@ interface QuickReportData {
     to: string;
   };
   sales: SalesSummary;
+  categorySales: CategorySales[];
+  creditGiven: CreditGiven[];
+  creditCollected: CreditCollected;
+  expenses: Expenses;
   purchases: PurchaseSummary;
   vendorSales: VendorSales[];
-  netProfit: number;
+  verification: Verification;
 }
 
 export function generateQuickReportPDF(data: QuickReportData): Buffer {
@@ -89,181 +139,292 @@ export function generateQuickReportPDF(data: QuickReportData): Buffer {
   doc.setTextColor(0, 0, 0);
   yPos += 15;
 
-  // Sales Summary Section
+  // 1. TOTAL SALES SUMMARY
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(37, 99, 235); // Blue color
-  doc.text('SALES SUMMARY', 14, yPos);
+  doc.setTextColor(37, 99, 235);
+  doc.text('1. TOTAL SALES SUMMARY', 14, yPos);
   doc.setTextColor(0, 0, 0);
   yPos += 8;
 
-  // Sales Table
   autoTable(doc, {
     startY: yPos,
-    head: [['Metric', 'Value']],
+    head: [['Description', 'Amount']],
     body: [
-      ['Total Bills', data.sales.totalBills.toString()],
-      ['Total Quantity (Bottles)', data.sales.totalQuantity.toString()],
-      ['Total Volume', `${(data.sales.totalVolumeML / 1000).toFixed(2)} L`],
-      ['Subtotal Amount', `₹${data.sales.subTotalAmount.toFixed(2)}`],
-      ['Total Discount', `₹${data.sales.totalDiscountAmount.toFixed(2)}`],
-      ['Total Amount', `₹${data.sales.totalAmount.toFixed(2)}`],
+      ['Total Sale Amount (MRP)', `₹${data.sales.subTotalAmount.toFixed(2)}`],
+      ['Total Discount Amount', `₹${data.sales.totalDiscountAmount.toFixed(2)}`],
+      ['Total Final Amount', `₹${data.sales.totalAmount.toFixed(2)}`],
     ],
     theme: 'grid',
-    headStyles: { fillColor: [37, 99, 235], fontSize: 11 },
+    headStyles: { fillColor: [37, 99, 235], fontSize: 11, fontStyle: 'bold' },
     styles: { fontSize: 10 },
     margin: { left: 14, right: 14 },
   });
 
-  yPos = (doc as any).lastAutoTable.finalY + 10;
-
-  // Payment Breakdown
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Payment Breakdown', 14, yPos);
-  yPos += 5;
+  yPos = (doc as any).lastAutoTable.finalY + 5;
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Payment Method', 'Amount']],
+    head: [['Payment Mode', 'Amount']],
     body: [
-      ['Cash Payments', `₹${data.sales.cashAmount.toFixed(2)}`],
-      ['Online Payments', `₹${data.sales.onlineAmount.toFixed(2)}`],
-      ['Credit Payments', `₹${data.sales.creditAmount.toFixed(2)}`],
+      ['Cash', `₹${data.sales.cashAmount.toFixed(2)}`],
+      ['Online', `₹${data.sales.onlineAmount.toFixed(2)}`],
+      ['Credit', `₹${data.sales.creditAmount.toFixed(2)}`],
     ],
     theme: 'grid',
-    headStyles: { fillColor: [37, 99, 235], fontSize: 11 },
-    styles: { fontSize: 10 },
+    headStyles: { fillColor: [37, 99, 235], fontSize: 10 },
+    styles: { fontSize: 9 },
     margin: { left: 14, right: 14 },
   });
 
   yPos = (doc as any).lastAutoTable.finalY + 15;
 
-  // Purchase Summary Section
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(22, 163, 74); // Green color
-  doc.text('PURCHASE SUMMARY', 14, yPos);
-  doc.setTextColor(0, 0, 0);
-  yPos += 8;
-
-  // Purchase Table
-  autoTable(doc, {
-    startY: yPos,
-    head: [['Metric', 'Value']],
-    body: [
-      ['Total Purchases', data.purchases.totalPurchases.toString()],
-      ['Total Quantity (Bottles)', data.purchases.totalQuantity.toString()],
-      ['Total Volume', `${(data.purchases.totalVolumeML / 1000).toFixed(2)} L`],
-      ['Total Amount', `₹${data.purchases.totalAmount.toFixed(2)}`],
-    ],
-    theme: 'grid',
-    headStyles: { fillColor: [22, 163, 74], fontSize: 11 },
-    styles: { fontSize: 10 },
-    margin: { left: 14, right: 14 },
-  });
-
-  yPos = (doc as any).lastAutoTable.finalY + 15;
-
-  // Vendor-Wise Sales Section
-  if (data.vendorSales && data.vendorSales.length > 0) {
-    // Add new page if needed
-    if (yPos > 220) {
-      doc.addPage();
-      yPos = 20;
-    }
-
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(147, 51, 234); // Purple color
-    doc.text('VENDOR-WISE SALES', 14, yPos);
-    doc.setTextColor(0, 0, 0);
-    yPos += 8;
-
-    // Show top 5 vendors
-    const topVendors = data.vendorSales.slice(0, 5);
-    
-    for (const vendor of topVendors) {
-      // Check if we need a new page
-      if (yPos > 240) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      // Vendor header
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text(vendor.vendorName, 14, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text(
-        `Total: ₹${vendor.totalAmount.toFixed(2)} | Qty: ${vendor.totalQuantity}`,
-        14,
-        yPos + 5
-      );
-      yPos += 10;
-
-      // Products table
-      const productRows = vendor.products.slice(0, 5).map((p) => [
-        p.productName,
-        p.brand,
-        p.quantity.toString(),
-        `₹${p.amount.toFixed(2)}`,
-      ]);
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Product', 'Brand', 'Qty', 'Amount']],
-        body: productRows,
-        theme: 'grid',
-        headStyles: { fillColor: [147, 51, 234], fontSize: 9 },
-        styles: { fontSize: 8 },
-        margin: { left: 14, right: 14 },
-        columnStyles: {
-          0: { cellWidth: 70 },
-          1: { cellWidth: 50 },
-          2: { cellWidth: 25, halign: 'center' },
-          3: { cellWidth: 37, halign: 'right' },
-        },
-      });
-
-      yPos = (doc as any).lastAutoTable.finalY + 8;
-    }
-
-    if (data.vendorSales.length > 5) {
-      doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.text(
-        `... and ${data.vendorSales.length - 5} more vendor(s)`,
-        14,
-        yPos
-      );
-      doc.setTextColor(0, 0, 0);
-      yPos += 10;
-    }
-  }
-
-  // Net Profit Section
-  // Check if we need a new page
-  if (yPos > 250) {
+  // 2. CATEGORY-WISE SALES
+  if (yPos > 220) {
     doc.addPage();
     yPos = 20;
   }
 
-  const profitColor = data.netProfit >= 0 ? [22, 163, 74] : [220, 38, 38];
-  doc.setFillColor(profitColor[0], profitColor[1], profitColor[2]);
-  doc.rect(14, yPos, 182, 15, 'F');
-  
-  doc.setFontSize(14);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(37, 99, 235);
+  doc.text('2. CATEGORY-WISE SALES REPORT', 14, yPos);
+  doc.setTextColor(0, 0, 0);
+  yPos += 8;
+
+  if (data.categorySales && data.categorySales.length > 0) {
+    const categoryRows = data.categorySales.map((cat) => [
+      cat.category,
+      `₹${cat.subTotal.toFixed(2)}`,
+      `₹${cat.discount.toFixed(2)}`,
+      `₹${cat.finalAmount.toFixed(2)}`,
+      `₹${cat.cashAmount.toFixed(2)}`,
+      `₹${cat.onlineAmount.toFixed(2)}`,
+      `₹${cat.creditAmount.toFixed(2)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Category', 'MRP', 'Discount', 'Final', 'Cash', 'Online', 'Credit']],
+      body: categoryRows,
+      theme: 'grid',
+      headStyles: { fillColor: [37, 99, 235], fontSize: 9, fontStyle: 'bold' },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 25, halign: 'left' },
+        2: { cellWidth: 25, halign: 'left' },
+        3: { cellWidth: 25, halign: 'left' },
+        4: { cellWidth: 22, halign: 'left' },
+        5: { cellWidth: 22, halign: 'left' },
+        6: { cellWidth: 23, halign: 'left' },
+      },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+  }
+
+  // 3. CREDIT GIVEN
+  if (yPos > 220) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(220, 38, 38);
+  doc.text('3. CREDIT GIVEN (Individual Customer-Wise)', 14, yPos);
+  doc.setTextColor(0, 0, 0);
+  yPos += 8;
+
+  if (data.creditGiven && data.creditGiven.length > 0) {
+    const creditGivenRows = data.creditGiven.map((cust) => [
+      cust.customerName,
+      `₹${cust.creditAmount.toFixed(2)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Customer Name', 'Credit Amount']],
+      body: creditGivenRows,
+      theme: 'grid',
+      headStyles: { fillColor: [220, 38, 38], fontSize: 10 },
+      styles: { fontSize: 9 },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 120 },
+        1: { cellWidth: 62, halign: 'left' },
+      },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+
+    const totalCreditGiven = data.creditGiven.reduce((sum, c) => sum + c.creditAmount, 0);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Credit Given: ₹${totalCreditGiven.toFixed(2)}`, 14, yPos + 5);
+    yPos += 15;
+  } else {
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text('No credit given today', 14, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 15;
+  }
+
+  // 4. CREDIT COLLECTED
+  if (yPos > 220) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(22, 163, 74);
+  doc.text('4. CREDIT COLLECTED (Individual Customer-Wise)', 14, yPos);
+  doc.setTextColor(0, 0, 0);
+  yPos += 8;
+
+  if (data.creditCollected && data.creditCollected.customerWise.length > 0) {
+    const creditCollectedRows = data.creditCollected.customerWise.map((cust) => [
+      cust.customerName,
+      `₹${cust.cashAmount.toFixed(2)}`,
+      `₹${cust.onlineAmount.toFixed(2)}`,
+      `₹${cust.totalAmount.toFixed(2)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Customer Name', 'Cash', 'Online', 'Total']],
+      body: creditCollectedRows,
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74], fontSize: 10 },
+      styles: { fontSize: 9 },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 90 },
+        1: { cellWidth: 30, halign: 'left' },
+        2: { cellWidth: 30, halign: 'left' },
+        3: { cellWidth: 32, halign: 'left' },
+      },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(
+      `Total Credit Collected: ₹${data.creditCollected.totalAmount.toFixed(2)} (Cash: ₹${data.creditCollected.cashAmount.toFixed(2)}, Online: ₹${data.creditCollected.onlineAmount.toFixed(2)})`,
+      14,
+      yPos + 5
+    );
+    yPos += 15;
+  } else {
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text('No credit collected today', 14, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 15;
+  }
+
+  // 5. EXPENSES
+  if (yPos > 220) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(147, 51, 234);
+  doc.text('5. EXPENSES', 14, yPos);
+  doc.setTextColor(0, 0, 0);
+  yPos += 8;
+
+  if (data.expenses && data.expenses.byCategory.length > 0) {
+    const expenseRows = data.expenses.byCategory.map((exp) => [
+      exp.category,
+      `₹${exp.amount.toFixed(2)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Category', 'Amount']],
+      body: expenseRows,
+      theme: 'grid',
+      headStyles: { fillColor: [147, 51, 234], fontSize: 10 },
+      styles: { fontSize: 9 },
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: { cellWidth: 120 },
+        1: { cellWidth: 62, halign: 'left' },
+      },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(
+      `Total Expenses: ₹${data.expenses.totalAmount.toFixed(2)} (Cash: ₹${data.expenses.cashAmount.toFixed(2)}, Online: ₹${data.expenses.onlineAmount.toFixed(2)})`,
+      14,
+      yPos + 5
+    );
+    yPos += 15;
+  } else {
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text('No expenses recorded today', 14, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 15;
+  }
+
+  // 6. VERIFICATION
+  if (yPos > 200) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('6. VERIFICATION', 14, yPos);
+  yPos += 10;
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Description', 'Amount']],
+    body: [
+      ['Total Sales (Cash + Online + Credit)', `₹${data.verification.totalSalesReceived.toFixed(2)}`],
+      ['Total Expenses', `₹${data.verification.totalExpenses.toFixed(2)}`],
+      ['Total Credit Collected', `₹${data.verification.totalCreditCollected.toFixed(2)}`],
+      ['Net Cash Flow', `₹${data.verification.netCashFlow.toFixed(2)}`],
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: [0, 0, 0], fontSize: 11, fontStyle: 'bold' },
+    styles: { fontSize: 10, fontStyle: 'bold' },
+    margin: { left: 14, right: 14 },
+    columnStyles: {
+      1: { halign: 'left' },
+    },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  // Highlight Net Cash Flow
+  const cashFlowColor = data.verification.netCashFlow >= 0 ? [22, 163, 74] : [220, 38, 38];
+  doc.setFillColor(cashFlowColor[0], cashFlowColor[1], cashFlowColor[2]);
+  doc.rect(14, yPos, 182, 12, 'F');
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
-  doc.text('NET PROFIT / LOSS', 20, yPos + 10);
-  doc.setFontSize(16);
-  doc.text(`₹${data.netProfit.toFixed(2)}`, 190, yPos + 10, { align: 'right' });
+  doc.text('NET CASH FLOW', 20, yPos + 8);
+  doc.text(`₹${data.verification.netCashFlow.toFixed(2)}`, 160, yPos + 8, { align: 'left' });
   doc.setTextColor(0, 0, 0);
 
+  yPos += 20;
+
   // Footer
-  yPos += 25;
+  if (yPos > 260) {
+    doc.addPage();
+    yPos = 20;
+  }
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
   doc.text(

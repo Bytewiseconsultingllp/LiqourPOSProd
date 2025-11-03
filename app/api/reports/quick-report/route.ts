@@ -38,9 +38,14 @@ export async function GET(request: NextRequest) {
 
     const endDate = new Date(date);
     endDate.setDate(endDate.getDate() + 1);
-    endDate.setHours(3, 59, 59, 999); const tenantConnection = await getTenantConnection(user.organizationId);
+    endDate.setHours(3, 59, 59, 999);
+
+    const tenantConnection = await getTenantConnection(user.organizationId);
     const Bill = getTenantModel(tenantConnection, 'Bill');
     const Purchase = getTenantModel(tenantConnection, 'Purchase');
+    const Expense = getTenantModel(tenantConnection, 'Expense');
+    const Payment = getTenantModel(tenantConnection, 'Payment');
+    const Customer = getTenantModel(tenantConnection, 'Customer');
 
     // Fetch sales bills
     const bills = await Bill.find({
@@ -60,6 +65,25 @@ export async function GET(request: NextRequest) {
       },
     }).lean();
 
+    // Fetch expenses
+    const expenses = await Expense.find({
+      organizationId: user.organizationId,
+      expenseDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    }).lean();
+
+    // Fetch credit payments collected
+    const creditPayments = await Payment.find({
+      organizationId: user.organizationId,
+      paymentDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+      isReverted: false,
+    }).lean();
+
     // Calculate sales summary
     let salesSummary = {
       totalBills: bills.length,
@@ -73,15 +97,105 @@ export async function GET(request: NextRequest) {
       creditAmount: 0,
     };
 
+    // Category-wise sales map
+    const categoryMap = new Map<string, {
+      category: string;
+      subTotal: number;
+      discount: number;
+      finalAmount: number;
+      cashAmount: number;
+      onlineAmount: number;
+      creditAmount: number;
+      // internal accumulator before bill-level discount allocation
+      __baseFinal: number;
+    }>();
+
+    // Customer-wise credit given map
+    const creditGivenMap = new Map();
+
     for (const bill of bills) {
       salesSummary.totalQuantity += bill.totalQuantityBottles || 0;
       salesSummary.totalVolumeML += bill.totalVolumeML || 0;
       salesSummary.subTotalAmount += bill.subTotalAmount || 0;
-      salesSummary.totalDiscountAmount += bill.totalDiscountAmount || 0;
+      console.log("sub total", bill.subTotalAmount)
+      console.log("item discount", bill.itemDiscountAmount);
+      console.log("bill discount", bill.billDiscountAmount);
+      console.log("promotion discount", bill.promotionDiscountAmount);
+      console.log("total amount", bill.totalAmount)
+      salesSummary.totalDiscountAmount += (bill.itemDiscountAmount || 0) + (bill.billDiscountAmount || 0) + (bill.promotionDiscountAmount || 0);
       salesSummary.totalAmount += bill.totalAmount || 0;
       salesSummary.cashAmount += bill.payment?.cashAmount || 0;
       salesSummary.onlineAmount += bill.payment?.onlineAmount || 0;
       salesSummary.creditAmount += bill.payment?.creditAmount || 0;
+
+      // Category-wise breakdown (item-level)
+      let billBaseFinalSum = 0;
+      for (const item of bill.items || []) {
+        const category = item.category || 'Uncategorized';
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, {
+            category,
+            subTotal: 0,
+            discount: 0,
+            finalAmount: 0,
+            cashAmount: 0,
+            onlineAmount: 0,
+            creditAmount: 0,
+            __baseFinal: 0,
+          });
+        }
+        const catData = categoryMap.get(category)!;
+        const itemSubTotal = (item.quantity || 0) * (item.rate || 0);
+        const itemItemDisc = Number(item.itemDiscountAmount || 0);
+        const itemPromoDisc = Number(item.promotionDiscountAmount || 0);
+        const itemStoredDisc = Number(item.discountAmount || 0);
+        // Prefer explicit item components, fallback to stored total
+        const itemDiscount = (itemItemDisc + itemPromoDisc) > 0 ? (itemItemDisc + itemPromoDisc) : itemStoredDisc;
+        const itemBaseFinal = Math.max(0, itemSubTotal - itemDiscount);
+
+        catData.subTotal += itemSubTotal;
+        catData.discount += itemDiscount;
+        catData.__baseFinal += itemBaseFinal;
+        billBaseFinalSum += itemBaseFinal;
+      }
+
+      // Allocate bill-level discounts proportionally to categories
+      const billLevelDiscount = Number(bill.billDiscountAmount || 0);
+      if (billLevelDiscount > 0 && billBaseFinalSum > 0) {
+        categoryMap.forEach((catData) => {
+          const catShare = catData.__baseFinal / billBaseFinalSum;
+          const alloc = billLevelDiscount * catShare;
+          catData.discount += alloc;
+          catData.__baseFinal = Math.max(0, catData.__baseFinal - alloc);
+        });
+      }
+
+      // Finalize category totals and allocate payments using baseFinal proportions
+      const billFinalTotal = Math.max(1, bill.totalAmount || 0);
+      categoryMap.forEach((catData) => {
+        catData.finalAmount += catData.__baseFinal;
+        const proportion = catData.__baseFinal / billFinalTotal;
+        catData.cashAmount += (bill.payment?.cashAmount || 0) * proportion;
+        catData.onlineAmount += (bill.payment?.onlineAmount || 0) * proportion;
+        catData.creditAmount += (bill.payment?.creditAmount || 0) * proportion;
+        // cleanup internal field
+        // @ts-ignore
+        delete (catData as any).__baseFinal;
+      });
+
+      // Customer-wise credit given
+      if (bill.payment?.creditAmount && bill.payment.creditAmount > 0) {
+        const customerId = bill.customerId || 'walk-in';
+        const customerName = bill.customerName || 'Walk-in Customer';
+        if (!creditGivenMap.has(customerId)) {
+          creditGivenMap.set(customerId, {
+            customerId,
+            customerName,
+            creditAmount: 0,
+          });
+        }
+        creditGivenMap.get(customerId).creditAmount += bill.payment.creditAmount;
+      }
     }
 
     // Calculate purchase summary
@@ -96,6 +210,66 @@ export async function GET(request: NextRequest) {
       purchaseSummary.totalQuantity += purchase.totalQuantity || 0;
       purchaseSummary.totalVolumeML += purchase.totalVolumeML || 0;
       purchaseSummary.totalAmount += purchase.totalAmount || 0;
+    }
+
+    // Calculate expense summary
+    let expenseSummary = {
+      totalExpenses: expenses.length,
+      totalAmount: 0,
+      cashAmount: 0,
+      onlineAmount: 0,
+      categories: new Map(),
+    };
+
+    for (const expense of expenses) {
+      expenseSummary.totalAmount += expense.amount || 0;
+      if (expense.paymentMode === 'Cash') {
+        expenseSummary.cashAmount += expense.amount || 0;
+      } else if (expense.paymentMode === 'Online') {
+        expenseSummary.onlineAmount += expense.amount || 0;
+      }
+
+      // Category-wise expenses
+      const category = expense.categoryName || 'Uncategorized';
+      if (!expenseSummary.categories.has(category)) {
+        expenseSummary.categories.set(category, 0);
+      }
+      expenseSummary.categories.set(
+        category,
+        expenseSummary.categories.get(category) + expense.amount
+      );
+    }
+
+    // Calculate credit collected summary
+    let creditCollectedSummary = {
+      totalPayments: creditPayments.length,
+      totalAmount: 0,
+      cashAmount: 0,
+      onlineAmount: 0,
+      customerWise: new Map(),
+    };
+
+    for (const payment of creditPayments) {
+      creditCollectedSummary.totalAmount += payment.totalAmount || 0;
+      creditCollectedSummary.cashAmount += payment.cashAmount || 0;
+      creditCollectedSummary.onlineAmount += payment.onlineAmount || 0;
+
+      // Customer-wise credit collected
+      const customerId = payment.customerId.toString();
+      const customerName = payment.customerName;
+      if (!creditCollectedSummary.customerWise.has(customerId)) {
+        creditCollectedSummary.customerWise.set(customerId, {
+          customerId,
+          customerName,
+          totalAmount: 0,
+          cashAmount: 0,
+          onlineAmount: 0,
+        });
+      }
+      const custData = creditCollectedSummary.customerWise.get(customerId);
+      custData.totalAmount += payment.totalAmount || 0;
+      custData.cashAmount += payment.cashAmount || 0;
+      custData.onlineAmount += payment.onlineAmount || 0;
     }
 
     // Calculate vendor-wise sales
@@ -157,6 +331,26 @@ export async function GET(request: NextRequest) {
       })).sort((a, b) => b.amount - a.amount),
     })).sort((a, b) => b.totalAmount - a.totalAmount);
 
+    // Format category-wise sales
+    const categorySales = Array.from(categoryMap.values()).sort(
+      (a, b) => b.finalAmount - a.finalAmount
+    );
+
+    // Format credit given
+    const creditGiven = Array.from(creditGivenMap.values()).sort(
+      (a, b) => b.creditAmount - a.creditAmount
+    );
+
+    // Format credit collected
+    const creditCollected = Array.from(creditCollectedSummary.customerWise.values()).sort(
+      (a, b) => b.totalAmount - a.totalAmount
+    );
+
+    // Format expenses by category
+    const expensesByCategory = Array.from(expenseSummary.categories.entries())
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount);
+
     // Create report data
     const reportData = {
       reportDate: date,
@@ -165,9 +359,28 @@ export async function GET(request: NextRequest) {
         to: endDate.toISOString(),
       },
       sales: salesSummary,
+      categorySales,
+      creditGiven,
+      creditCollected: {
+        totalAmount: creditCollectedSummary.totalAmount,
+        cashAmount: creditCollectedSummary.cashAmount,
+        onlineAmount: creditCollectedSummary.onlineAmount,
+        customerWise: creditCollected,
+      },
+      expenses: {
+        totalAmount: expenseSummary.totalAmount,
+        cashAmount: expenseSummary.cashAmount,
+        onlineAmount: expenseSummary.onlineAmount,
+        byCategory: expensesByCategory,
+      },
       purchases: purchaseSummary,
       vendorSales,
-      netProfit: salesSummary.totalAmount - purchaseSummary.totalAmount,
+      verification: {
+        totalSalesReceived: salesSummary.cashAmount + salesSummary.onlineAmount + salesSummary.creditAmount,
+        totalExpenses: expenseSummary.totalAmount,
+        totalCreditCollected: creditCollectedSummary.totalAmount,
+        netCashFlow: (salesSummary.cashAmount + salesSummary.onlineAmount) - expenseSummary.totalAmount + creditCollectedSummary.totalAmount,
+      },
     };
 
     // Generate PDF
