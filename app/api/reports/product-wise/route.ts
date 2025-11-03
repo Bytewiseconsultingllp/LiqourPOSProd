@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
-
+    
 function getUserFromToken(request: NextRequest): any {
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -39,10 +38,7 @@ export async function GET(request: NextRequest) {
 
     const endDate = new Date(toDate);
     endDate.setDate(endDate.getDate() + 1);
-    endDate.setHours(3, 59, 59, 999);
-
-    registerAllModels();
-    const tenantConnection = await getTenantConnection(user.organizationId);
+    endDate.setHours(3, 59, 59, 999);    const tenantConnection = await getTenantConnection(user.organizationId);
     const Bill = getTenantModel(tenantConnection, 'Bill');
 
     // Fetch all bills in the date range

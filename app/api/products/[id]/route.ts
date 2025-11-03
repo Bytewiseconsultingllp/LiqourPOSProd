@@ -1,6 +1,5 @@
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { NextRequest, NextResponse } from 'next/server';
-import { getTenantConnection } from '@/lib/mongoose';
-import { getProductDetailsModel, IProductDetails } from '@/models/Product';
 
 export async function GET(
   request: NextRequest,
@@ -17,8 +16,8 @@ export async function GET(
     }
 
     const connection = await getTenantConnection(tenantId);
-    // Using ProductDetails type with 'Product' collection name
-    const ProductDetails = getProductDetailsModel(connection.connection);
+    // Using tenant-registered 'Product' model
+    const ProductDetails = getTenantModel(connection, 'Product');
 
     const product = await ProductDetails.findById(params.id).lean();
 
@@ -58,8 +57,8 @@ export async function PUT(
 
     const body = await request.json();
     const connection = await getTenantConnection(tenantId);
-    // Using ProductDetails type with 'Product' collection name
-    const ProductDetails = getProductDetailsModel(connection.connection);
+    // Using tenant-registered 'Product' model
+    const ProductDetails = getTenantModel(connection, 'Product');
 
     const product = await ProductDetails.findByIdAndUpdate(
       params.id,
@@ -102,14 +101,12 @@ export async function DELETE(
     }
 
     const connection = await getTenantConnection(tenantId);
-    // Using ProductDetails type with 'Product' collection name
-    const ProductDetails = getProductDetailsModel(connection.connection);
+    // Using tenant-registered 'Product' model
+    const ProductDetails = getTenantModel(connection, 'Product');
 
     // Soft delete by setting isActive to false
-    const product = await ProductDetails.findByIdAndUpdate(
-      params.id,
-      { isActive: false },
-      { new: true }
+    const product = await ProductDetails.findByIdAndDelete(
+      {_id:(params.id)},
     );
 
     if (!product) {

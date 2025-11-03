@@ -1,7 +1,6 @@
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
 
 const vendorSchema = z.object({
   name: z.string().min(1, 'Vendor name is required'),
@@ -37,9 +36,7 @@ function getUserFromToken(request: NextRequest): any {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = getUserFromToken(request);
-    registerAllModels();
-    const tenantConnection = await getTenantConnection(user.organizationId);
+    const user = getUserFromToken(request); const tenantConnection = await getTenantConnection(user.organizationId);
     const Vendor = getTenantModel(tenantConnection, 'Vendor');
     const vendors = await Vendor.find({ organizationId: user.organizationId }).sort({ vendorPriority: -1, name: 1 }).lean();
     return NextResponse.json({ success: true, data: vendors, count: vendors.length });
@@ -59,9 +56,7 @@ export async function POST(request: NextRequest) {
     const validation = vendorSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json({ error: validation.error.errors[0].message }, { status: 400 });
-    }
-    registerAllModels();
-    const tenantConnection = await getTenantConnection(user.organizationId);
+    } const tenantConnection = await getTenantConnection(user.organizationId);
     const Vendor = getTenantModel(tenantConnection, 'Vendor');
     const existingVendor = await Vendor.findOne({ 'contactInfo.email': validation.data.contactInfo.email, organizationId: user.organizationId });
     if (existingVendor) {

@@ -3,6 +3,7 @@ import heroBg from "@/assets/hero-bg.jpg";
 import { useCustomers } from "@/lib/hooks/useCustomers";
 import { useProducts } from "@/lib/hooks/useProducts";
 import { Customer } from "@/types/customer";
+import { apiFetch } from "@/lib/api-client";
 import { CartItem, Payment, ProductDetails } from "@/types/product";
 import {
   AlertCircle,
@@ -15,6 +16,7 @@ import {
   Eye,
   FileText,
   Layers,
+  CreditCardIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo, useState, useEffect } from "react";
@@ -31,6 +33,7 @@ import { ShoppingCart } from "./ShoppingCart";
 import { Input } from "../components/ui/input";
 import { ThermalBillPrint } from "@/components/ThermalBillPrint";
 import { SubBillsViewer } from "@/components/SubBillsViewer";
+import { CollectPaymentDialog } from "../ledger/CollectPaymentDialog";
 
 const Index = () => {
   // Fetch products and customers from API
@@ -44,6 +47,7 @@ const Index = () => {
     customers,
     loading: customersLoading,
     error: customersError,
+    refetch: refetchCustomers,
   } = useCustomers({ isActive: true });
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
@@ -68,7 +72,7 @@ const Index = () => {
   const [viewingBill, setViewingBill] = useState<any | null>(null);
   const [viewBillType, setViewBillType] = useState<'main' | 'sub'>('main');
   const [viewingSubBills, setViewingSubBills] = useState<any | null>(null);
-  
+
   // Barcode scanner states
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [scannerActive, setScannerActive] = useState(true);
@@ -81,10 +85,18 @@ const Index = () => {
         selectedVolumes.includes(product.volumeML);
       const categoryMatch =
         selectedCategories.length === 0 ||
-        selectedCategories.includes(product.category);
+        selectedCategories.includes(product.category || "");
       return volumeMatch && categoryMatch;
     });
   }, [products, selectedVolumes, selectedCategories]);
+
+  useEffect(() => {
+    if (!selectedCustomer) return;
+    const updated = customers.find((c) => c._id === selectedCustomer._id);
+    if (updated && updated !== selectedCustomer) {
+      setSelectedCustomer(updated);
+    }
+  }, [customers, selectedCustomer]);
 
   const handleVolumeToggle = (volume: number) => {
     setSelectedVolumes((prev) =>
@@ -288,12 +300,10 @@ const Index = () => {
         saleDate: billDate,
       };
 
-      const response = await fetch("/api/sales/create", {
+      const response = await apiFetch("/api/sales/create", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          "x-tenant-id": orgId,
         },
         body: JSON.stringify(saleData),
       });
@@ -332,11 +342,17 @@ const Index = () => {
     }
   };
 
-  const handleRecordCreditPayment = (amount: number) => {
-    // This would typically update the customer's credit balance in a database
-    console.log(
-      `Recording credit payment of ₹${amount} for customer ${selectedCustomer?._id}`
-    );
+  const handlePaymentSuccess = async () => {
+    setCreditPaymentDialogOpen(false);
+    try {
+      await refetchCustomers();
+      if (selectedCustomer) {
+        const updated = customers.find(c => c._id === selectedCustomer._id);
+        if (updated) setSelectedCustomer(updated);
+      }
+    } catch (_) {
+      // noop: UI will reflect once hook updates
+    }
   };
 
   const handleViewBill = (sale: any, billType: 'main' | 'sub' = 'main') => {
@@ -367,12 +383,7 @@ const Index = () => {
       const organization = JSON.parse(organizationData);
       const orgId = organization._id || organization.id;
 
-      const response = await fetch('/api/sales?limit=10', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-tenant-id': orgId,
-        },
-      });
+      const response = await apiFetch('/api/sales?limit=10');
 
       const data = await response.json();
       if (data.success) {
@@ -421,7 +432,7 @@ const Index = () => {
     const checkInactivity = setInterval(() => {
       const inactiveTime = Date.now() - lastActivityTime;
       const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
-      
+
       if (inactiveTime >= fiveMinutes && scannerActive) {
         setScannerActive(false);
         toast.info('Barcode scanner sleeping due to inactivity');
@@ -478,7 +489,7 @@ const Index = () => {
       // Build barcode buffer
       if (e.key.length === 1) {
         setBarcodeBuffer(prev => prev + e.key);
-        
+
         // Clear buffer after 100ms of no input (barcode scanners are fast)
         clearTimeout(timeout);
         timeout = setTimeout(() => {
@@ -498,9 +509,9 @@ const Index = () => {
   const handleBarcodeScanned = (barcode: string) => {
     // Find product by SKU or barcode
     const product = products.find(
-      p => p.sku?.toLowerCase() === barcode.toLowerCase() || 
-           p.barcode?.toLowerCase() === barcode.toLowerCase() ||
-           p._id === barcode
+      p => p.sku?.toLowerCase() === barcode.toLowerCase() ||
+        p.barcode?.toLowerCase() === barcode.toLowerCase() ||
+        p._id === barcode
     );
 
     if (!product) {
@@ -515,7 +526,7 @@ const Index = () => {
 
     // Check if product already in cart
     const existingItem = cartItems.find(item => item.productId === product._id);
-    
+
     if (existingItem) {
       // Increment quantity
       setCartItems(prev =>
@@ -526,9 +537,9 @@ const Index = () => {
             const itemDiscountAmount = item.itemDiscountAmount || 0;
             const totalDiscount = itemDiscountAmount * newQuantity;
             const finalAmount = subTotal - totalDiscount;
-            
+
             toast.success(`${product.name} quantity updated to ${newQuantity}`);
-            
+
             return {
               ...item,
               quantity: newQuantity,
@@ -572,38 +583,45 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Customer Selection */}
-        <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+        {/* customer selection */}
+        <div className="mb-6 flex items-center justify-between gap-4 flex-nowrap">
           <CustomerSelector
             customers={customers}
             selectedCustomer={selectedCustomer}
             onSelectCustomer={setSelectedCustomer}
           />
-          {selectedCustomer && selectedCustomer.type != 'Walk-In' && (
-            <Input 
-              type="date" 
-              value={billDate.slice(0, 10)} 
+
+          {selectedCustomer && selectedCustomer.type !== "Walk-In" && (
+            <Input
+              type="date"
+              value={billDate.slice(0, 10)}
               onChange={(e) => {
                 const selectedDate = new Date(e.target.value);
                 selectedDate.setHours(4, 5, 0, 0); // Always set time to 4:05 AM
                 setBillDate(selectedDate.toISOString());
-              }} 
-              min={products.at(0)?.morningStockLastUpdatedDate ? products.at(0)?.morningStockLastUpdatedDate?.slice(0, 10) : new Date().toISOString().slice(0, 10)} 
+              }}
+              min={
+                products.at(0)?.morningStockLastUpdatedDate
+                  ? products.at(0)?.morningStockLastUpdatedDate?.slice(0, 10)
+                  : new Date().toISOString().slice(0, 10)
+              }
+              className="w-auto"
             />
           )}
-          <div className="flex items-center gap-2">
-            {/* Barcode Scanner Status Indicator */}
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-              scannerActive 
-                ? 'bg-green-50 border-green-200 text-green-700' 
-                : 'bg-gray-50 border-gray-200 text-gray-500'
-            }`}>
-              <Scan className={`h-4 w-4 ${scannerActive ? 'animate-pulse' : ''}`} />
+
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${scannerActive
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "bg-gray-50 border-gray-200 text-gray-500"
+                }`}
+            >
+              <Scan className={`h-4 w-4 ${scannerActive ? "animate-pulse" : ""}`} />
               <span className="text-sm font-medium">
-                Scanner: {scannerActive ? 'Active' : 'Sleeping'}
+                Scanner: {scannerActive ? "Active" : "Sleeping"}
               </span>
             </div>
-            
+
             <Button
               variant="outline"
               className="gap-2"
@@ -616,118 +634,169 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Customer Details Card */}
-        {selectedCustomer && (
-          <Card className="mb-6 p-4">
-            <div className="flex items-start gap-4">
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Customer</p>
-                    <p className="font-semibold">{selectedCustomer.name}</p>
-                  </div>
-                </div>
-                {selectedCustomer.contactInfo.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Phone</p>
-                      <p className="font-semibold">
-                        {selectedCustomer.contactInfo.phone}
-                      </p>
+        <div className="flex flex-col h-[100dvh] overflow-hidden">
+          {/* Customer Info */}
+          {/* {selectedCustomer && (
+            <div className="flex mb-3 gap-6">
+              <div className="flex-[2]">
+                <Card className="p-4 h-full">
+
+                  <div className="flex flex-wrap items-start gap-4">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Customer</p>
+                          <p className="font-semibold">{selectedCustomer.name}</p>
+                        </div>
+                      </div>
+
+                      {selectedCustomer.contactInfo.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Phone</p>
+                            <p className="font-semibold">{selectedCustomer.contactInfo.phone}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedCustomer._id !== "walk-in" && selectedCustomer.type !== "Walk-In" && (
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Credit Balance</p>
+                            <p className="font-semibold text-primary">
+                              ₹{selectedCustomer.creditLimit - (selectedCustomer.outstandingBalance ?? 0) || 0}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
-                {selectedCustomer._id !== "walk-in" && selectedCustomer.type != 'Walk-In' && (
-                  <div className="flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        Credit Balance
-                      </p>
-                      <p className="font-semibold text-primary">
-                        ₹
-                        {selectedCustomer.creditLimit -
-                          (selectedCustomer.outstandingBalance ?? 0) || 0}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                </Card>
               </div>
-            </div>
-          </Card>
-        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Products Section */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Search and Filters */}
-            <div className="space-y-4">
-              <ProductSearch
-                products={products}
-                onSelectProduct={handleProductSelect}
-              />
-              <ProductFilters
-                selectedVolumes={selectedVolumes}
-                selectedCategories={selectedCategories}
-                onVolumeToggle={handleVolumeToggle}
-                onCategoryToggle={handleCategoryToggle}
-                onClearFilters={handleClearFilters}
-              />
+              <div className="flex-1" />
             </div>
+          )} */}
 
-            {/* Product Gallery - Scrollable */}
-            <div className="h-[calc(100vh-420px)] overflow-y-auto pr-2">
-              {productsLoading ? (
-                <div className="flex items-center justify-center h-full">
+
+          {/* Main Content */}
+          <div className="flex flex-1 gap-6 overflow-hidden">
+            {/* Products Section */}
+            <div className="flex flex-col flex-[2] min-w-0 overflow-hidden">
+              {/* Customer Info (inside product area, not above layout) */}
+              {selectedCustomer && (
+                <Card className="p-4 mb-3">
+                  <div className="flex flex-wrap items-start gap-4">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Customer</p>
+                          <p className="font-semibold">{selectedCustomer.name}</p>
+                        </div>
+                      </div>
+
+                      {selectedCustomer.contactInfo.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Phone</p>
+                            <p className="font-semibold">{selectedCustomer.contactInfo.phone}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedCustomer._id !== "walk-in" &&
+                        selectedCustomer.type !== "Walk-In" && (
+                          <div className="flex items-center gap-2">
+                            <CreditCardIcon className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Due Balance</p>
+                              <p className="font-semibold text-primary">
+                                ₹
+                                {
+                                  (selectedCustomer.outstandingBalance ?? 0)}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+
+                      {selectedCustomer._id !== "walk-in" &&
+                        selectedCustomer.type !== "Walk-In" && (
+                          <div className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Credit Balance</p>
+                              <p className="font-semibold text-primary">
+                                ₹
+                                {selectedCustomer.creditLimit -
+                                  (selectedCustomer.outstandingBalance ?? 0) || 0}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Filters */}
+              <div className="flex-shrink-0 space-y-4">
+                <ProductSearch products={products} onSelectProduct={handleProductSelect} />
+                <ProductFilters
+                  selectedVolumes={selectedVolumes}
+                  selectedCategories={selectedCategories}
+                  onVolumeToggle={handleVolumeToggle}
+                  onCategoryToggle={handleCategoryToggle}
+                  onClearFilters={handleClearFilters}
+                />
+              </div>
+
+              {/* Product List */}
+              <div className="flex-1 overflow-y-auto pr-2 mt-2">
+
+                {productsLoading ? (<div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-2 text-muted-foreground">
-                    Loading products...
-                  </span>
+                  <span className="ml-2 text-muted-foreground">Loading products...</span>
                 </div>
-              ) : productsError ? (
-                <Alert variant="destructive">
+                ) : productsError ? (<Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {productsError}
-                    <button
-                      onClick={refetchProducts}
-                      className="ml-2 underline font-semibold"
-                    >
-                      Retry
-                    </button>
+                    {productsError} <button onClick={refetchProducts} className="ml-2 underline font-semibold">
+                      Retry </button>
                   </AlertDescription>
                 </Alert>
-              ) : filteredProducts.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p>No products found</p>
+                ) : filteredProducts.length === 0 ? (<div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>
+                    No products found</p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-4 gap-4">
-                  {filteredProducts.map((product) => (
-                    <ProductCard
-                      key={product._id}
-                      product={product}
-                      onSelect={handleProductSelect}
-                    />
-                  ))}
-                </div>
-              )}
+                ) : (<div className="grid grid-cols-4 gap-4">
+                  {filteredProducts.map((product) =>
+                  (<ProductCard key={product._id} product={product} onSelect={handleProductSelect} />
+                  ))} </div>
+                )} </div>
+            </div>
+
+            {/* Cart */}
+            <div className="flex flex-col flex-1 h-full overflow-hidden">
+              <div className="sticky top-0 flex-1 overflow-y-auto">
+                <ShoppingCart
+                  items={cartItems}
+                  customer={selectedCustomer}
+                  onRemoveItem={handleRemoveItem}
+                  onEditItem={handleEditItem}
+                  onComplete={handleCompleteSale}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Cart Section */}
-          <div>
-            <ShoppingCart
-              items={cartItems}
-              customer={selectedCustomer}
-              onRemoveItem={handleRemoveItem}
-              onEditItem={handleEditItem}
-              onComplete={handleCompleteSale}
-            />
-          </div>
         </div>
+
 
         {/* Recent Sales Table */}
         <div className="mt-8">
@@ -775,9 +844,9 @@ const Index = () => {
                         <td className="px-4 py-3 text-sm text-right font-semibold">₹{sale.totalAmount?.toFixed(2)}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${sale.payment?.mode === 'Cash' ? 'bg-green-100 text-green-800' :
-                              sale.payment?.mode === 'Online' ? 'bg-blue-100 text-blue-800' :
-                                sale.payment?.mode === 'Credit' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-gray-100 text-gray-800'
+                            sale.payment?.mode === 'Online' ? 'bg-blue-100 text-blue-800' :
+                              sale.payment?.mode === 'Credit' ? 'bg-orange-100 text-orange-800' :
+                                'bg-gray-100 text-gray-800'
                             }`}>
                             {sale.payment?.mode || 'N/A'}
                           </span>
@@ -843,30 +912,50 @@ const Index = () => {
         initialDiscount={editingItem?.discountAmount}
       />
 
-      <CreditPaymentDialog
+      {/* <CreditPaymentDialog
         open={creditPaymentDialogOpen}
         onClose={() => setCreditPaymentDialogOpen(false)}
         customer={selectedCustomer}
         onRecordPayment={handleRecordCreditPayment}
-      />
+      /> */}
+
+
+      {
+        selectedCustomer && (
+          <CollectPaymentDialog
+            customer={{
+              _id: selectedCustomer._id,
+              name: selectedCustomer.name,
+              outstandingBalance: (selectedCustomer as any).outstandingBalance ?? 0,
+            }}
+            open={creditPaymentDialogOpen}
+            onClose={() => setCreditPaymentDialogOpen(false)}
+            onSuccess={handlePaymentSuccess}
+          />
+        )
+      }
 
       {/* Bill Viewer */}
-      {viewingBill && (
-        <ThermalBillPrint
-          billData={viewingBill}
-          billType={viewBillType}
-          onClose={handleCloseBillView}
-        />
-      )}
+      {
+        viewingBill && (
+          <ThermalBillPrint
+            billData={viewingBill}
+            billType={viewBillType}
+            onClose={handleCloseBillView}
+          />
+        )
+      }
 
       {/* Sub-Bills Viewer */}
-      {viewingSubBills && (
-        <SubBillsViewer
-          sale={viewingSubBills}
-          onClose={handleCloseSubBills}
-        />
-      )}
-    </div>
+      {
+        viewingSubBills && (
+          <SubBillsViewer
+            sale={viewingSubBills}
+            onClose={handleCloseSubBills}
+          />
+        )
+      }
+    </div >
   );
 };
 

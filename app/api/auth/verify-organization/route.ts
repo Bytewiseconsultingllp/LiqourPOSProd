@@ -1,13 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { sendWelcomeEmail } from '@/lib/email';
 import { connectToDatabase } from '@/lib/mongoose';
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import Organization from '@/models/Organization';
 import PendingOrganization from '@/models/PendingOrganization';
 import User from '@/models/User';
-import { sendWelcomeEmail } from '@/lib/email';
-import { invalidateOrganizationCache } from '@/lib/cache';
-import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
-
+import { NextRequest, NextResponse } from 'next/server';
+    
 export async function POST(request: NextRequest) {
   try {
     const { token } = await request.json();
@@ -73,9 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Create org admin user in TENANT database
     try {
-      // Register all model schemas
-      registerAllModels();
-      
+      // Register all model schemas      
       // Get tenant connection
       const tenantConnection = await getTenantConnection(organization._id.toString());
       const TenantUser = getTenantModel(tenantConnection, 'User');

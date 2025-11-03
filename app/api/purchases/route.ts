@@ -1,11 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
 import { getPurchaseModel } from '@/models/Purchase';
-import { getVendorStockModel } from '@/models/VendorStock';
 import { getVendorModel } from '@/models/Vendor';
+import { getVendorStockModel } from '@/models/VendorStock';
 import mongoose from 'mongoose';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/purchases
@@ -32,11 +31,11 @@ export async function GET(request: NextRequest) {
 
     // Build query
     const query: any = { organizationId: user.organizationId };
-    
+
     if (vendorId) {
       query.vendorId = vendorId;
     }
-    
+
     if (startDate || endDate) {
       query.purchaseDate = {};
       if (startDate) {
@@ -46,7 +45,7 @@ export async function GET(request: NextRequest) {
         query.purchaseDate.$lte = new Date(endDate);
       }
     }
-    
+
     if (paymentStatus) {
       query.paymentStatus = paymentStatus;
     }
@@ -75,7 +74,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   let session: mongoose.ClientSession | null = null;
-  
+
   try {
     const user = await getAuthenticatedUser(request);
     if (!user) {
@@ -96,11 +95,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Register models first
-    registerAllModels();
-    
+    // Register models first    
     const connection = await getTenantConnection(user.organizationId);
-    
+
     // Start transaction
     session = await connection.startSession();
     session.startTransaction();
@@ -108,7 +105,7 @@ export async function POST(request: NextRequest) {
     const Purchase = getPurchaseModel(connection);
     const VendorStock = getVendorStockModel(connection);
     const Vendor = getVendorModel(connection);
-    
+
     // Get Product model using getTenantModel
     const Product = getTenantModel(connection, 'Product');
 
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
     const vendor = await Vendor.findOne({
       _id: vendorId,
       organizationId: user.organizationId,
-    }).session(session);
+    }).session(session).read('primary');
 
     if (!vendor) {
       throw new Error('Vendor not found');
@@ -125,7 +122,7 @@ export async function POST(request: NextRequest) {
     // Generate unique purchase number
     const purchaseCount = await Purchase.countDocuments({
       organizationId: user.organizationId,
-    }).session(session);
+    }).session(session).read('primary');
     const purchaseNumber = `PUR-${Date.now()}-${String(purchaseCount + 1).padStart(4, '0')}`;
 
     // Process each item and update stocks
@@ -143,7 +140,7 @@ export async function POST(request: NextRequest) {
       const product = await Product.findOne({
         _id: productId,
         organizationId: user.organizationId,
-      }).session(session);
+      }).session(session).read('primary');
 
       if (!product) {
         throw new Error(`Product with ID ${productId} not found`);
@@ -174,7 +171,7 @@ export async function POST(request: NextRequest) {
         vendorId,
         productId,
         organizationId: user.organizationId,
-      }).session(session);
+      }).session(session).read('primary');
 
       if (vendorStock) {
         // Update existing vendor stock
@@ -222,7 +219,7 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = subtotal + (taxAmount || 0);
     const dueAmount = totalAmount - (paidAmount || 0);
-    
+
     let paymentStatus: 'pending' | 'partial' | 'paid' = 'pending';
     if (paidAmount >= totalAmount) {
       paymentStatus = 'paid';
@@ -273,21 +270,21 @@ export async function POST(request: NextRequest) {
         console.error('Error aborting transaction:', abortError);
       }
     }
-    
+
     console.error('Error creating purchase:', error);
-    
+
     // Check for MongoDB transaction conflicts
     if (error.code === 112 || error.codeName === 'WriteConflict') {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Transaction conflict. Please try again.',
           details: 'The system is busy processing another request. Please retry in a moment.'
         },
         { status: 409 }
       );
     }
-    
+
     return NextResponse.json(
       { success: false, error: error.message || 'Failed to create purchase' },
       { status: 500 }

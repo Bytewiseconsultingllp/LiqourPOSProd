@@ -12,8 +12,7 @@ import {
 } from '@/lib/auth';
 import { cacheUser, cacheOrganization } from '@/lib/cache';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
-
+    
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(1, 'Password is required'),
@@ -90,9 +89,7 @@ export async function POST(request: NextRequest) {
     let tenantConnection;
     let tenantUser;
     try {
-      // Register all model schemas FIRST (before getting connection)
-      registerAllModels();
-      
+      // Register all model schemas FIRST (before getting connection)      
       // Get tenant connection (this will use the registered schemas)
       tenantConnection = await getTenantConnection(organizationId);
       
@@ -133,6 +130,10 @@ export async function POST(request: NextRequest) {
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
+    // Persist refresh token in MAIN DB user for refresh endpoint validation
+    user.refreshToken = refreshToken;
+    await user.save();
+
     // STEP 4: Update user's last login in TENANT DB (if user exists)
     if (tenantUser) {
       tenantUser.lastLogin = new Date();
@@ -145,7 +146,6 @@ export async function POST(request: NextRequest) {
     // Main DB is needed for user edit/delete operations
     // Tenant DB is used for all other operations
     console.log(`✅ Both database connections active (main + tenant)`);
-
 
     // Cache user and organization data
     const userData = {

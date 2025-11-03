@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
 
 const customerSchema = z.object({
   name: z.string().min(1, 'Customer name is required'),
@@ -49,8 +48,6 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
 
     // Register models first
-    registerAllModels();
-
     // Get tenant connection
     const tenantConnection = await getTenantConnection(user.organizationId);
     const Customer = getTenantModel(tenantConnection, 'Customer');
@@ -104,8 +101,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Register models first
-    registerAllModels();
-
     // Get tenant connection
     const tenantConnection = await getTenantConnection(user.organizationId);
     const Customer = getTenantModel(tenantConnection, 'Customer');

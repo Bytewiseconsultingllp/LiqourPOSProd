@@ -13,6 +13,7 @@ import { Card } from '@/app/dashboard/components/ui/card';
 import { Label } from '@/app/dashboard/components/ui/label';
 import { Loader2, Percent } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api-client';
 
 interface Customer {
   _id: string;
@@ -72,23 +73,11 @@ export function CollectPaymentDialog({
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('accessToken');
-      const orgData = localStorage.getItem('organization');
 
-      if (!token || !orgData) {
-        toast.error('Please login again');
-        return;
-      }
-
-      const organization = JSON.parse(orgData);
-      const orgId = organization._id || organization.id;
-
-      const response = await fetch('/api/payments/collect', {
+      const response = await apiFetch('/api/payments/collect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': orgId,
         },
         body: JSON.stringify({
           customerId: customer._id,

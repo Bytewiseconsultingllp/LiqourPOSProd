@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-client';
 import { Vendor } from '@/types/vendor';
 import { Plus, Edit2, Trash2, Search, Loader2, X } from 'lucide-react';
 
@@ -57,12 +58,7 @@ export default function VendorManagementPage() {
         ? JSON.parse(localStorage.getItem('organization')!).id 
         : 'default';
 
-      const response = await fetch('/api/vendors', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-tenant-id': orgId,
-        },
-      });
+      const response = await apiFetch('/api/vendors');
 
       if (response.status === 401) {
         showToast('Session expired. Please login again', 'error');
@@ -181,12 +177,10 @@ export default function VendorManagementPage() {
       
       const method = editingVendor ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'x-tenant-id': orgId,
         },
         body: JSON.stringify({
           name: formData.name,
@@ -249,12 +243,8 @@ export default function VendorManagementPage() {
         ? JSON.parse(localStorage.getItem('organization')!).id 
         : 'default';
 
-      const response = await fetch(`/api/vendors/${vendor._id}`, {
+      const response = await apiFetch(`/api/vendors/${vendor._id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-tenant-id': orgId,
-        },
       });
 
       const data = await response.json();

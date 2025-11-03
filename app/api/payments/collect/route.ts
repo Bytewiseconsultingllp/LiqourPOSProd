@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
+import { NextRequest, NextResponse } from 'next/server';
 
 function getUserFromToken(request: NextRequest): any {
   const authHeader = request.headers.get('authorization');
@@ -11,7 +10,7 @@ function getUserFromToken(request: NextRequest): any {
   const token = authHeader.substring(7);
   const { verifyAccessToken } = require('@/lib/auth');
   const payload = verifyAccessToken(token);
-  
+
   if (!payload) {
     throw new Error('Invalid token');
   }
@@ -30,10 +29,7 @@ export async function POST(request: NextRequest) {
         { error: 'Invalid payment data' },
         { status: 400 }
       );
-    }
-
-    registerAllModels();
-    const tenantConnection = await getTenantConnection(user.organizationId);
+    } const tenantConnection = await getTenantConnection(user.organizationId);
     const Customer = getTenantModel(tenantConnection, 'Customer');
     const Payment = getTenantModel(tenantConnection, 'Payment');
 
@@ -82,7 +78,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error collecting payment:', error);
-    
+
     if (error.message.includes('token') || error.message.includes('authorization')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

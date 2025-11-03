@@ -1,26 +1,25 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
 import {
-  Home,
-  ShoppingCart,
-  Package,
-  Users,
+  Building2,
+  ChevronDown,
   FileText,
-  Settings,
+  Home,
+  Loader2,
   LogOut,
   Menu,
-  X,
-  ChevronDown,
-  Building2,
-  TrendingUp,
+  Package,
+  Settings,
   ShoppingBag,
-  Loader2,
-  Tag,
-  UserCircle
+  ShoppingCart,
+  TrendingUp,
+  TrendingUpDown,
+  Users,
+  X
 } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Navbar() {
   const router = useRouter();
@@ -31,7 +30,7 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
+
   const userMenuRef = useRef<HTMLDivElement>(null);
   const managementMenuRef = useRef<HTMLDivElement>(null);
 
@@ -148,11 +147,23 @@ export default function Navbar() {
         { name: 'Promotions and offers', href: '/dashboard/management/promotions', icon: ShoppingBag },
         { name: 'Vendors', href: '/dashboard/management/vendors', icon: Building2 },
         { name: 'Users', href: '/dashboard/management/users', icon: Users },
+        { name: 'Edit Sales', href: '/dashboard/management/sales', icon: TrendingUpDown },
+        { name: 'Edit Purchases', href: '/dashboard/management/purchases', icon: ShoppingBag },
       ],
     },
     {
       name: 'Reports',
       href: '/dashboard/reports',
+      icon: FileText,
+    },
+    {
+      name: 'Expenses',
+      href: '/dashboard/expenses',
+      icon: FileText,
+    },
+    {
+      name: 'Inventory',
+      href: '/dashboard/inventory',
       icon: FileText,
     },
   ];

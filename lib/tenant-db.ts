@@ -9,26 +9,55 @@ const MONGODB_URI = process.env.MONGODB_URI;
 // Store tenant connections
 const tenantConnections = new Map<string, Connection>();
 
-// Store model schemas for registration
-const modelSchemas = new Map<string, { schema: mongoose.Schema; options?: any }>();
+// Store model schemas for registration (persist on global to survive hot-reloads)
+declare global {
+  // eslint-disable-next-line no-var
+  var _modelSchemas: Map<string, { schema: mongoose.Schema; options?: any }>|undefined;
+}
+const modelSchemas: Map<string, { schema: mongoose.Schema; options?: any }> =
+  (global._modelSchemas = global._modelSchemas ?? new Map());
+
+// Global flag to track if schemas have been registered
+// This prevents duplicate registration across module reloads in Next.js
+declare global {
+  var _modelSchemasRegistered: boolean | undefined;
+}
+
+// Disable auto-indexing in production to prevent E11000 errors on cold starts
+// Indexes should be created manually via migration scripts in production
+if (process.env.NODE_ENV === 'production') {
+  mongoose.set('autoIndex', false);
+  console.log('⚙️  Auto-indexing disabled in production');
+} else {
+  mongoose.set('autoIndex', true);
+  console.log('⚙️  Auto-indexing enabled in development');
+}
 
 /**
  * Register a model schema for later use with tenant databases
  * This should be called once at application startup for each model
+ * Uses global flag to prevent duplicate registration in Next.js
  */
 export function registerModelSchema(
   modelName: string,
   schema: mongoose.Schema,
   options?: any
 ) {
-  modelSchemas.set(modelName, { schema, options });
+  // Only register if not already registered globally
+  if (!modelSchemas.has(modelName)) {
+    modelSchemas.set(modelName, { schema, options });
+  }
 }
 
 /**
  * Get or create a tenant-specific database connection
  * Each organization gets its own isolated database
+ * Automatically registers model schemas on first call
  */
 export async function getTenantConnection(organizationId: string): Promise<Connection> {
+  // Ensure schemas are registered (only happens once globally)
+  ensureSchemasRegistered();
+  
   // Check if connection already exists and is active
   if (tenantConnections.has(organizationId)) {
     const conn = tenantConnections.get(organizationId)!;
@@ -87,13 +116,30 @@ export async function getTenantConnection(organizationId: string): Promise<Conne
 }
 
 /**
+ * Ensure model schemas are registered (called once globally)
+ * This imports and registers all schemas from model-registry
+ */
+function ensureSchemasRegistered() {
+  // In Next.js dev, module hot-reload can reset this module state while the global flag stays true.
+  // Re-register if global flag is not set OR if local registry is empty.
+  if (!global._modelSchemasRegistered || modelSchemas.size === 0) {
+    // Dynamically import to avoid circular dependencies
+    const { registerAllModels } = require('./model-registry');
+    registerAllModels();
+    global._modelSchemasRegistered = true;
+    console.log('✅ Model schemas registered globally');
+  }
+}
+
+/**
  * Register all models for a tenant connection
+ * Each tenant connection gets its own model instances for isolation
  */
 function registerModelsForTenant(connection: Connection) {
   console.log(`📋 Registering ${modelSchemas.size} models for tenant connection...`);
   
   modelSchemas.forEach(({ schema, options }, modelName) => {
-    // Check if model is already registered
+    // Check if model is already registered on this connection
     if (!connection.models[modelName]) {
       connection.model(modelName, schema, options?.collection);
       console.log(`  ✅ Registered model: ${modelName}`);

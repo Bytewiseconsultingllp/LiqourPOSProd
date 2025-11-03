@@ -1,12 +1,19 @@
 import mongoose, { Schema, Model, Connection } from 'mongoose';
 
+export interface IBarcode {
+  code: string;
+  createdAt: Date;
+  createdBy?: string;
+}
+
 export interface IProductDetails {
   _id: string;
   name: string;
   description?: string;
   imageUrl?: string;
   sku?: string;
-  barcode?: string;
+  barcode?: string; // Deprecated - kept for backward compatibility
+  barcodes?: IBarcode[]; // New: Multiple barcodes support
   brand: string;
   category: string;
   
@@ -38,6 +45,7 @@ export interface IProductDetails {
   // Box Mapping (Optional)
   bottlesPerCaret?: number;
   noOfCarets?: number;
+  noOfBottlesPerCaret?: number; // Number of bottles per caret
   
   // Status
   isActive: boolean;
@@ -70,12 +78,20 @@ const ProductDetailsSchema = new Schema<IProductDetails>(
     sku: {
       type: String,
       trim: true,
-      sparse: true,
     },
     barcode: {
       type: String,
       trim: true,
-      sparse: true,
+    },
+    barcodes: {
+      type: [
+        {
+          code: { type: String, required: true },
+          createdAt: { type: Date, default: Date.now },
+          createdBy: { type: String },
+        },
+      ],
+      default: [],
     },
     brand: {
       type: String,
@@ -143,6 +159,9 @@ const ProductDetailsSchema = new Schema<IProductDetails>(
     noOfCarets: {
       type: Number,
     },
+    noOfBottlesPerCaret: {
+      type: Number,
+    },
     // Status
     isActive: {
       type: Boolean,
@@ -160,9 +179,9 @@ const ProductDetailsSchema = new Schema<IProductDetails>(
   }
 );
 
-// Indexes
-ProductDetailsSchema.index({ sku: 1 });
-ProductDetailsSchema.index({ barcode: 1 });
+// Indexes (sparse allows null/undefined values)
+ProductDetailsSchema.index({ sku: 1 }, { sparse: true });
+ProductDetailsSchema.index({ barcode: 1 }, { sparse: true });
 ProductDetailsSchema.index({ category: 1 });
 ProductDetailsSchema.index({ isActive: 1 });
 ProductDetailsSchema.index({ name: 'text', description: 'text' });

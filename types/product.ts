@@ -21,6 +21,16 @@ export interface TaxInfo {
 }
 
 /**
+ * Barcode Interface
+ * Supports multiple barcodes per product
+ */
+export interface Barcode {
+  code: string;
+  createdAt: string;
+  createdBy?: string;
+}
+
+/**
  * Product Details Interface
  * Used throughout the application for product management
  */
@@ -32,7 +42,8 @@ export interface ProductDetails {
   description?: string;
   imageUrl?: string;
   sku?: string;
-  barcode?: string;
+  barcode?: string; // Deprecated - kept for backward compatibility
+  barcodes?: Barcode[]; // New: Multiple barcodes support
   brand: string;
   category: string;
 
@@ -58,6 +69,7 @@ export interface ProductDetails {
   // Box Mapping (Optional)
   bottlesPerCaret?: number; // Number of bottles per caret
   noOfCarets?: number; // Number of carets for this product
+  noOfBottlesPerCaret?: number; // Number of bottles per caret
 
   // Status
   isActive?: boolean;

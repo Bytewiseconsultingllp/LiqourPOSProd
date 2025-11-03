@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
+import { getVendorModel } from '@/models/Vendor';
+import { getVendorStockModel } from '@/models/VendorStock';
 
 const productPurchasePriceSchema = z.object({
   purchasePrice: z.number().min(0),
@@ -40,6 +41,7 @@ const productSchema = z.object({
   expiryDate: z.string().optional(),
   bottlesPerCaret: z.number().min(0).optional(),
   noOfCarets: z.number().min(0).optional(),
+  noOfBottlesPerCaret: z.number().min(0).optional(),
   isActive: z.boolean().optional(),
   location: z.string().optional(),
 });
@@ -74,10 +76,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
-
-    // Register all models first
-    registerAllModels();
-
     // Get tenant connection
     const tenantConnection = await getTenantConnection(user.organizationId);
     const ProductDetails = getTenantModel(tenantConnection, 'Product'); // Using ProductDetails type with 'Product' collection
@@ -137,10 +135,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Register all models first
-    registerAllModels();
-
     // Get tenant connection
     const tenantConnection = await getTenantConnection(user.organizationId);
     const ProductDetails = getTenantModel(tenantConnection, 'Product'); // Using ProductDetails type with 'Product' collection
@@ -177,6 +171,37 @@ export async function POST(request: NextRequest) {
       performedBy: user.userId,
       organizationId: user.organizationId,
     });
+
+    // Create vendor stock for vendor with priority 1
+    try {
+      const Vendor = getVendorModel(tenantConnection);
+      const priority1Vendor = await Vendor.findOne({
+        organizationId: user.organizationId,
+        vendorPriority: 1,
+        isActive: true,
+      }).sort({ createdAt: 1 });
+
+      if (priority1Vendor) {
+        const VendorStock = getVendorStockModel(tenantConnection);
+        await VendorStock.create({
+          vendorId: priority1Vendor._id,
+          productId: product._id,
+          productName: product.name,
+          brand: product.brand,
+          volumeML: product.volumeML,
+          currentStock: validation.data.currentStock || 0,
+          lastPurchasePrice: validation.data.pricePerUnit || 0,
+          lastPurchaseDate: new Date(),
+          organizationId: user.organizationId,
+        });
+        console.log(`✅ Vendor stock created for vendor: ${priority1Vendor.name}`);
+      } else {
+        console.log('⚠️ No priority 1 vendor found, skipping vendor stock creation');
+      }
+    } catch (vendorStockError: any) {
+      console.error('Error creating vendor stock:', vendorStockError);
+      // Don't fail the product creation if vendor stock fails
+    }
 
     console.log(`✅ Product created in tenant database: ${product.name}`);
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection } from '@/lib/tenant-db';
 import { verifyAccessToken } from '@/lib/auth';
-import { registerAllModels } from '@/lib/model-registry';
 import { getBillModel } from '@/models/Bill';
 
 export async function GET(request: NextRequest) {
@@ -27,9 +26,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const page = parseInt(searchParams.get('page') || '1');
     const skip = (page - 1) * limit;
-
-    registerAllModels();
-    
     // Get tenant connection and models
     const connection = await getTenantConnection(tenantId);
     const Bill = getBillModel(connection);

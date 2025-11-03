@@ -61,7 +61,8 @@ const UserSchema = new Schema(
 );
 
 // Indexes for User
-UserSchema.index({ email: 1 }, { unique: true });
+// Email uniqueness is per organization to allow same email across different orgs
+UserSchema.index({ organizationId: 1, email: 1 }, { unique: true });
 UserSchema.index({ organizationId: 1 });
 UserSchema.index({ role: 1 });
 
@@ -211,7 +212,8 @@ ProductDetailsSchema.index({ organizationId: 1, barcode: 1 }, { sparse: true });
 ProductDetailsSchema.index({ organizationId: 1, category: 1 });
 ProductDetailsSchema.index({ organizationId: 1, brand: 1 });
 ProductDetailsSchema.index({ organizationId: 1, name: 1 });
-ProductDetailsSchema.index({ name: 'text', description: 'text', brand: 'text' });
+// Text index removed for performance - use compound indexes above for searches
+// If full-text search is needed, consider using a dedicated search service like Elasticsearch
 
 /**
  * Sale Model Schema
@@ -660,26 +662,97 @@ PaymentSchema.index({ paymentDate: -1, organizationId: 1 });
 PaymentSchema.index({ isReverted: 1 });
 
 /**
+ * VendorStock Model Schema
+ */
+const VendorStockSchema = new Schema(
+  {
+    vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor', required: true },
+    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    productName: { type: String, required: true },
+    brand: { type: String, required: true },
+    volumeML: { type: Number, required: true },
+    currentStock: { type: Number, required: true, default: 0, min: 0 },
+    lastPurchasePrice: { type: Number, required: true, min: 0 },
+    lastPurchaseDate: { type: Date, required: true, default: Date.now },
+    organizationId: { type: String, required: true, index: true },
+  },
+  { timestamps: true }
+);
+
+VendorStockSchema.index({ vendorId: 1, productId: 1, organizationId: 1 }, { unique: true });
+VendorStockSchema.index({ vendorId: 1, organizationId: 1 });
+VendorStockSchema.index({ productId: 1, organizationId: 1 });
+
+/**
+ * Expense Category Model Schema
+ */
+const ExpenseCategorySchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
+    organizationId: { type: String, required: true, index: true },
+  },
+  { timestamps: true }
+);
+
+ExpenseCategorySchema.index({ name: 1, organizationId: 1 }, { unique: true });
+
+/**
+ * Expense Model Schema
+ */
+const ExpenseSchema = new Schema(
+  {
+    expenseNumber: { type: String, required: true, unique: true, trim: true },
+    categoryId: { type: Schema.Types.ObjectId, ref: 'ExpenseCategory', required: true },
+    categoryName: { type: String, required: true },
+    amount: { type: Number, required: true, min: 0 },
+    description: { type: String, trim: true },
+    expenseDate: { type: Date, required: true, default: Date.now },
+    paymentMode: { type: String, enum: ['Cash', 'Online', 'Credit', 'Cheque'], required: true },
+    transactionId: { type: String, trim: true },
+    receiptUrl: { type: String, trim: true },
+    notes: { type: String, trim: true },
+    organizationId: { type: String, required: true, index: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: true }
+);
+
+ExpenseSchema.index({ expenseNumber: 1 });
+ExpenseSchema.index({ categoryId: 1 });
+ExpenseSchema.index({ expenseDate: -1 });
+ExpenseSchema.index({ organizationId: 1, expenseDate: -1 });
+ExpenseSchema.index({ paymentMode: 1 });
+
+/**
  * Register all schemas
  * This should be called once at application startup
  * Safe to call multiple times - will only register once
+ * 
+ * ⚠️ IMPORTANT: Do NOT auto-call this at module import!
+ * In Next.js, modules reload on every API route execution in development,
+ * causing "Cannot overwrite model" errors.
  */
 export function registerAllModels() {
   registerModelSchema('User', UserSchema);
   registerModelSchema('Product', ProductDetailsSchema); // ProductDetails schema registered as 'Product' in DB
-  registerModelSchema('Sale', SaleSchema);
+  // registerModelSchema('Sale', SaleSchema);
   registerModelSchema('InventoryTransaction', InventoryTransactionSchema);
   registerModelSchema('Customer', CustomerSchema);
   registerModelSchema('Vendor', VendorSchema);
   registerModelSchema('Bill', BillSchema);
   registerModelSchema('Purchase', PurchaseSchema);
   registerModelSchema('Payment', PaymentSchema);
+  registerModelSchema('VendorStock', VendorStockSchema);
+  registerModelSchema('ExpenseCategory', ExpenseCategorySchema);
+  registerModelSchema('Expense', ExpenseSchema);
   
-  console.log('✅ All 9 model schemas registered');
+  console.log('✅ All 11 model schemas registered');
 }
 
 // Export schemas for type definitions
 export { UserSchema, ProductDetailsSchema, ProductDetailsSchema as ProductSchema, SaleSchema, InventoryTransactionSchema, CustomerSchema, VendorSchema, BillSchema, PurchaseSchema };
 
-// Auto-register models when this module is imported
-registerAllModels();
+// ❌ REMOVED: Auto-registration at import
+// This was causing "Cannot overwrite model" errors in Next.js
+// Models are now registered via getTenantConnection() in tenant-db.ts

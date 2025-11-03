@@ -80,7 +80,6 @@ const PurchaseSchema = new Schema<IPurchase>(
     purchaseNumber: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
     vendorId: {
@@ -164,7 +163,7 @@ const PurchaseSchema = new Schema<IPurchase>(
 );
 
 // Indexes for better query performance
-PurchaseSchema.index({ purchaseNumber: 1 });
+PurchaseSchema.index({ purchaseNumber: 1 }, { unique: true });
 PurchaseSchema.index({ vendorId: 1 });
 PurchaseSchema.index({ purchaseDate: -1 });
 PurchaseSchema.index({ organizationId: 1, purchaseDate: -1 });

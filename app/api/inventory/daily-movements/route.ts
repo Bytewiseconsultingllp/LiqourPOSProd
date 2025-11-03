@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { verifyAccessToken } from '@/lib/auth';
-import { registerAllModels } from '@/lib/model-registry';
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { getBillModel } from '@/models/Bill';
 import { getPurchaseModel } from '@/models/Purchase';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -69,10 +68,7 @@ export async function GET(request: NextRequest) {
       
       // End: 23:59:59.999 IST = same day 18:29:59.999 UTC
       endOfPeriod = new Date(Date.UTC(year, month, day, 18, 29, 59, 999));
-    }
-
-    registerAllModels();
-    
+    }    
     // Get tenant connection
     const connection = await getTenantConnection(tenantId);
     const InventoryTransaction = getTenantModel(connection, 'InventoryTransaction');

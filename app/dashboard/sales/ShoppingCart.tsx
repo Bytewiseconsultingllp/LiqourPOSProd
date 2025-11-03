@@ -60,6 +60,13 @@ export function ShoppingCart({
     ? (subtotal * customer.maxDiscountPercentage) / 100 
     : subtotal;
 
+  // Calculate total discount (item + bill + promotion)
+  const totalDiscount = itemDiscounts + billDiscount + promotionDiscount;
+  const totalDiscountPercentage = subtotal > 0 ? (totalDiscount / subtotal) * 100 : 0;
+  
+  // Calculate remaining discount allowed for bill discount
+  const remainingDiscountAllowed = Math.max(0, maxAllowedDiscount - itemDiscounts - promotionDiscount);
+
   // Calculate available credit for customer
   const availableCredit = customer && customer._id !== "walk-in"
     ? Math.max(0, (customer.creditLimit || 0) - (customer.outstandingBalance || 0))
@@ -112,6 +119,14 @@ export function ShoppingCart({
 
     if (paymentMethod === "credit" && (!customer || customer._id === "walk-in")) {
       toast.error("Cannot process credit payment for walk-in customer");
+      return;
+    }
+
+    // Final validation: Check total discount doesn't exceed max allowed
+    if (totalDiscount > maxAllowedDiscount) {
+      toast.error(
+        `Total discount (${totalDiscountPercentage.toFixed(1)}%) exceeds customer's maximum allowed discount (${customer?.maxDiscountPercentage || 100}%)`
+      );
       return;
     }
 
@@ -291,7 +306,7 @@ export function ShoppingCart({
                 <Label className="text-xs font-semibold">Additional Discount (₹)</Label>
                 {customer && customer.maxDiscountPercentage && customer.maxDiscountPercentage < 100 && (
                   <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full font-medium">
-                    Max: {customer.maxDiscountPercentage}% (₹{maxAllowedDiscount.toFixed(2)})
+                    Max: {customer.maxDiscountPercentage}% | Remaining: ₹{remainingDiscountAllowed.toFixed(2)}
                   </span>
                 )}
               </div>
@@ -300,16 +315,21 @@ export function ShoppingCart({
                 value={billDiscount}
                 onChange={(e) => {
                   const value = Math.max(0, parseFloat(e.target.value) || 0);
-                  if (value > maxAllowedDiscount) {
-                    toast.error(`Discount cannot exceed ${customer?.maxDiscountPercentage || 100}% (₹${maxAllowedDiscount.toFixed(2)})`);
-                    setBillDiscount(maxAllowedDiscount);
+                  const newTotalDiscount = itemDiscounts + value + promotionDiscount;
+                  
+                  if (newTotalDiscount > maxAllowedDiscount) {
+                    toast.error(
+                      `Total discount (item + bill) cannot exceed ${customer?.maxDiscountPercentage || 100}%. ` +
+                      `Item discounts: ₹${itemDiscounts.toFixed(2)}, Remaining: ₹${remainingDiscountAllowed.toFixed(2)}`
+                    );
+                    setBillDiscount(remainingDiscountAllowed);
                   } else {
                     setBillDiscount(value);
                   }
                 }}
                 placeholder="0"
                 min="0"
-                max={maxAllowedDiscount}
+                max={remainingDiscountAllowed}
                 className="h-9"
               />
             </div>

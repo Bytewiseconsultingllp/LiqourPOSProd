@@ -204,7 +204,7 @@ export function StockOverview() {
                     <TableHead className="text-center">Volume</TableHead>
                     <TableHead className="text-center">Morning Stock</TableHead>
                     <TableHead className="text-center">Current Stock</TableHead>
-                    <TableHead className="text-center">Change</TableHead>
+                    {/* <TableHead className="text-center">Change</TableHead> */}
                     <TableHead className="text-center">Reorder Level</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
@@ -235,7 +235,7 @@ export function StockOverview() {
                         <TableCell className="text-center">
                           <span className="text-lg font-bold">{product.currentStock}</span>
                         </TableCell>
-                        <TableCell className="text-center">
+                        {/* <TableCell className="text-center">
                           {stockChange !== 0 ? (
                             <div className={`flex items-center justify-center gap-1 ${stockChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {stockChange > 0 ? (
@@ -248,7 +248,7 @@ export function StockOverview() {
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="text-center">
                           <span className="font-semibold">{product.reorderLevel || 0}</span>
                         </TableCell>

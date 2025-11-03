@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
+import { NextRequest, NextResponse } from 'next/server';
 
 function getUserFromToken(request: NextRequest): any {
   const authHeader = request.headers.get('authorization');
@@ -11,7 +10,7 @@ function getUserFromToken(request: NextRequest): any {
   const token = authHeader.substring(7);
   const { verifyAccessToken } = require('@/lib/auth');
   const payload = verifyAccessToken(token);
-  
+
   if (!payload) {
     throw new Error('Invalid token');
   }
@@ -39,10 +38,7 @@ export async function GET(request: NextRequest) {
 
     const endDate = new Date(toDate);
     endDate.setDate(endDate.getDate() + 1);
-    endDate.setHours(3, 59, 59, 999);
-
-    registerAllModels();
-    const tenantConnection = await getTenantConnection(user.organizationId);
+    endDate.setHours(3, 59, 59, 999); const tenantConnection = await getTenantConnection(user.organizationId);
     const Bill = getTenantModel(tenantConnection, 'Bill');
 
     // Fetch all bills in the date range
@@ -102,7 +98,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error fetching volume-wise report:', error);
-    
+
     if (error.message.includes('token') || error.message.includes('authorization')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

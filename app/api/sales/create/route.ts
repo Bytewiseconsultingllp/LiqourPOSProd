@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
-import { getBillModel } from '@/models/Bill';
-import { getProductDetailsModel } from '@/models/Product';
-import { getVendorStockModel } from '@/models/VendorStock';
+import { NextRequest, NextResponse } from 'next/server';
+
 import { getAuthenticatedUser } from '@/lib/auth';
+import { getBillModel } from '@/models/Bill';
+import { getVendorStockModel } from '@/models/VendorStock';
 
 interface AppliedPromotion {
   promotionId: string;
@@ -66,7 +65,7 @@ function generateBillId(): string {
   const minutes = String(now.getMinutes()).padStart(2, '0');
   const seconds = String(now.getSeconds()).padStart(2, '0');
   const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  
+
   return `BILL-${year}${month}${day}-${hours}${minutes}${seconds}-${random}`;
 }
 
@@ -75,35 +74,35 @@ function generateBillId(): string {
  */
 function splitBillByVolume(items: any[], payment: any) {
   const MAX_VOLUME_ML = 2500;
-  
+
   // Calculate total volume
-  const totalVolume = items.reduce((sum, item) => 
+  const totalVolume = items.reduce((sum, item) =>
     sum + (item.volumePerUnitML * item.quantity), 0
   );
-  
+
   // If total volume <= 2.5L, no split needed
   if (totalVolume <= MAX_VOLUME_ML) {
     return null;
   }
-  
+
   // Split items into optimized sub-bills
   const subBills: any[] = [];
   let currentSubBill: any[] = [];
   let currentVolume = 0;
-  
+
   // Sort items by volume (largest first) for better optimization
-  const sortedItems = [...items].sort((a, b) => 
+  const sortedItems = [...items].sort((a, b) =>
     (b.volumePerUnitML * b.quantity) - (a.volumePerUnitML * a.quantity)
   );
-  
+
   for (const item of sortedItems) {
     const itemVolume = item.volumePerUnitML * item.quantity;
-    
+
     // If single item exceeds max volume, split the item
     if (itemVolume > MAX_VOLUME_ML) {
       const bottlesPerSubBill = Math.floor(MAX_VOLUME_ML / item.volumePerUnitML);
       let remainingQuantity = item.quantity;
-      
+
       while (remainingQuantity > 0) {
         const quantityForThisSubBill = Math.min(bottlesPerSubBill, remainingQuantity);
         const subBillItem = {
@@ -112,43 +111,43 @@ function splitBillByVolume(items: any[], payment: any) {
           subTotal: item.rate * quantityForThisSubBill,
           finalAmount: (item.rate * quantityForThisSubBill) - (item.discountAmount * quantityForThisSubBill / item.quantity),
         };
-        
+
         if (currentSubBill.length > 0) {
           // Finish current sub-bill
           subBills.push([...currentSubBill]);
           currentSubBill = [];
           currentVolume = 0;
         }
-        
+
         subBills.push([subBillItem]);
         remainingQuantity -= quantityForThisSubBill;
       }
       continue;
     }
-    
+
     // If adding this item would exceed max volume, start new sub-bill
     if (currentVolume + itemVolume > MAX_VOLUME_ML && currentSubBill.length > 0) {
       subBills.push([...currentSubBill]);
       currentSubBill = [];
       currentVolume = 0;
     }
-    
+
     currentSubBill.push(item);
     currentVolume += itemVolume;
   }
-  
+
   // Add remaining items as last sub-bill
   if (currentSubBill.length > 0) {
     subBills.push(currentSubBill);
   }
-  
+
   // Calculate payment distribution proportionally
   const totalAmount = items.reduce((sum, item) => sum + item.finalAmount, 0);
-  
+
   return subBills.map(subBillItems => {
     const subBillTotal = subBillItems.reduce((sum: number, item: any) => sum + item.finalAmount, 0);
     const proportion = subBillTotal / totalAmount;
-    
+
     return {
       items: subBillItems,
       subTotalAmount: subBillItems.reduce((sum: number, item: any) => sum + item.subTotal, 0),
@@ -164,7 +163,7 @@ function splitBillByVolume(items: any[], payment: any) {
 
 export async function POST(request: NextRequest) {
   let session: any = null;
-  
+
   try {
     // Authenticate user
     const user = await getAuthenticatedUser(request);
@@ -174,7 +173,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     const tenantId = request.headers.get('x-tenant-id') || user.organizationId;
     if (!tenantId) {
       return NextResponse.json(
@@ -182,22 +181,22 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     const body: CreateSaleRequest = await request.json();
-    const { 
-      customerId, 
-      customerName, 
-      customerPhone, 
-      customerType, 
-      items, 
-      payment, 
+    const {
+      customerId,
+      customerName,
+      customerPhone,
+      customerType,
+      items,
+      payment,
       saleDate,
       itemDiscountAmount,
       billDiscountAmount,
       promotionDiscountAmount,
       appliedPromotions
     } = body;
-    
+
     // Validation
     if (!customerName || !items || items.length === 0 || !payment) {
       return NextResponse.json(
@@ -205,52 +204,50 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
-    // Ensure models are registered
-    registerAllModels();
-    
+
+    // Ensure models are registered    
     // Get database connection
     const connection = await getTenantConnection(tenantId);
     const Bill = getBillModel(connection);
     const ProductDetails = getTenantModel(connection, 'Product'); // Use ProductDetails with 'Product' collection
     const VendorStock = getVendorStockModel(connection);
-    
+
     // Start transaction
     session = await connection.startSession();
     session.startTransaction();
-    
+
     // Generate unique bill ID
     const totalBillId = generateBillId();
-    
+
     // Calculate totals
     const totalQuantityBottles = items.reduce((sum, item) => sum + item.quantity, 0);
     const totalVolumeML = items.reduce((sum, item) => sum + (item.volumePerUnitML * item.quantity), 0);
     const subTotalAmount = items.reduce((sum, item) => sum + item.subTotal, 0);
     const totalDiscountAmount = items.reduce((sum, item) => sum + (item.discountAmount || 0), 0);
-    
+
     // Calculate total amount after all discounts
     const totalBeforeAdditionalDiscounts = items.reduce((sum, item) => sum + item.finalAmount, 0);
     const totalAmount = totalBeforeAdditionalDiscounts - (billDiscountAmount || 0) - (promotionDiscountAmount || 0);
-    
+
     // Process each item: validate stock and assign vendors
     const processedItems = [];
     const vendorIds: string[] = [];
-    
+
     for (const item of items) {
       // 1. Check product stock
-      const product = await ProductDetails.findById(item.productId).session(session);
+      const product = await ProductDetails.findById(item.productId).session(session).read('primary');
       if (!product) {
         throw new Error(`Product ${item.productName} not found`);
       }
-      
+
       // Check stock using currentStock field from ProductDetails schema
       const productStock = (product as any).currentStock || 0;
       console.log(`📊 Product ${item.productName} stock: ${productStock}`);
-      
+
       if (productStock < item.quantity) {
         throw new Error(`Insufficient stock for ${item.productName}. Available: ${productStock}, Required: ${item.quantity}`);
       }
-      
+
       // 2. Get vendor stocks (with stock available)
       console.log(`🔍 Looking for vendor stocks for product: ${item.productId}`);
       const vendorStocks = await VendorStock.find({
@@ -258,12 +255,13 @@ export async function POST(request: NextRequest) {
         currentStock: { $gt: 0 },
       })
         .populate('vendorId')
-        .session(session);
+        .session(session)
+        .read('primary');
 
-        
-      
+
+
       console.log(`📦 Found ${vendorStocks.length} vendor stocks`);
-      
+
       if (vendorStocks.length === 0) {
         // Try without session to debug
         const debugStocks = await VendorStock.find({
@@ -273,38 +271,38 @@ export async function POST(request: NextRequest) {
         console.log(`🐛 Debug: Stocks data:`, JSON.stringify(debugStocks, null, 2));
         throw new Error(`No vendor stock available for ${item.productName}`);
       }
-      
+
       // Sort by vendor priority (1 is highest)
       vendorStocks.sort((a: any, b: any) => {
         const priorityA = a.vendorId?.priority || 999;
         const priorityB = b.vendorId?.priority || 999;
         return priorityA - priorityB;
       });
-      
+
       // 3. Calculate total available vendor stock
       const totalVendorStock = vendorStocks.reduce((sum, vs: any) => sum + vs.currentStock, 0);
       if (totalVendorStock < item.quantity) {
         throw new Error(`Insufficient vendor stock for ${item.productName}. Available: ${totalVendorStock}, Required: ${item.quantity}`);
       }
-      
+
       // 4. Deduct from vendor stocks by priority
       let remainingQuantity = item.quantity;
       let assignedVendorId = '';
-      
+
       for (const vendorStock of vendorStocks) {
         if (remainingQuantity <= 0) break;
-        
+
         const deductQuantity = Math.min(remainingQuantity, (vendorStock as any).currentStock);
-        
+
         // Deduct from vendor stock
         await VendorStock.findByIdAndUpdate(
           vendorStock._id,
           { $inc: { currentStock: -deductQuantity } },
           { session }
         );
-        
+
         remainingQuantity -= deductQuantity;
-        
+
         // Use the first vendor (highest priority) as the assigned vendor
         if (!assignedVendorId) {
           assignedVendorId = (vendorStock as any).vendorId._id.toString();
@@ -313,34 +311,34 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-      
+
       // 5. Deduct from product stock using currentStock field
       await ProductDetails.findByIdAndUpdate(
         item.productId,
         { $inc: { currentStock: -item.quantity } },
         { session }
       );
-      
+
       // Add processed item with vendor ID
       processedItems.push({
         ...item,
         vendorId: assignedVendorId,
       });
     }
-    
+
     // Check if bill needs to be split (> 2.5L)
     const subBills = splitBillByVolume(processedItems, payment);
-    
+
     // Filter and validate applied promotions
-    const validPromotions = (appliedPromotions || []).filter((promo: any) => 
-      promo.promotionId && 
-      promo.promotionName && 
-      promo.promotionType && 
+    const validPromotions = (appliedPromotions || []).filter((promo: any) =>
+      promo.promotionId &&
+      promo.promotionName &&
+      promo.promotionType &&
       promo.discountAmount !== undefined
     );
-    
+
     console.log('📊 Applied Promotions:', JSON.stringify(validPromotions, null, 2));
-    
+
     // Create bill
     const bill = await Bill.create(
       [{
@@ -369,7 +367,7 @@ export async function POST(request: NextRequest) {
       }],
       { session }
     );
-    
+
     // Update customer outstanding balance if credit payment
     if (customerType === 'registered' && customerId && payment.creditAmount > 0) {
       const Customer = getTenantModel(connection, 'Customer');
@@ -379,10 +377,10 @@ export async function POST(request: NextRequest) {
         { session }
       );
     }
-    
+
     // Commit transaction
     await session.commitTransaction();
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -391,7 +389,7 @@ export async function POST(request: NextRequest) {
       },
       message: 'Sale completed successfully',
     });
-    
+
   } catch (error: any) {
     // Rollback transaction on error
     if (session) {
@@ -401,21 +399,21 @@ export async function POST(request: NextRequest) {
         console.error('Error aborting transaction:', abortError);
       }
     }
-    
+
     console.error('Error creating sale:', error);
-    
+
     // Check for MongoDB transaction conflicts
     if (error.code === 112 || error.codeName === 'WriteConflict') {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Transaction conflict. Please try again.',
           details: 'The system is busy processing another request. Please retry in a moment.'
         },
         { status: 409 }
       );
     }
-    
+
     return NextResponse.json(
       { success: false, error: error.message || 'Failed to create sale' },
       { status: 500 }

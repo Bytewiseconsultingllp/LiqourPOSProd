@@ -1,11 +1,10 @@
+import { hashPassword, normalizeEmail } from '@/lib/auth';
+import { connectToDatabase } from '@/lib/mongoose';
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { connectToDatabase } from '@/lib/mongoose';
-import User from '@/models/User';
-import { hashPassword, normalizeEmail } from '@/lib/auth';
-import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
-import { registerAllModels } from '@/lib/model-registry';
-
+    
 const createUserSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email format'),
@@ -121,10 +120,6 @@ export async function POST(request: NextRequest) {
 
     // Hash password
     const hashedPassword = await hashPassword(password);
-
-    // Register all models first
-    registerAllModels();
-
     // Create user in TENANT database FIRST
     const tenantConnection = await getTenantConnection(user.organizationId);
     const TenantUser = getTenantModel(tenantConnection, 'User');

@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { verifyAccessToken } from '@/lib/auth';
-import { registerAllModels } from '@/lib/model-registry';
+import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import { NextRequest, NextResponse } from 'next/server';
+
 import { getBillModel } from '@/models/Bill';
-import mongoose from 'mongoose';
 
 interface ClosingStockItem {
   productId: string;
@@ -31,35 +30,35 @@ interface ClosingStockRequest {
  */
 function splitBillByVolume(items: any[], totalAmount: number) {
   const MAX_VOLUME_ML = 2500;
-  
+
   // Calculate total volume
-  const totalVolume = items.reduce((sum, item) => 
+  const totalVolume = items.reduce((sum, item) =>
     sum + (item.volumePerUnitML * item.quantity), 0
   );
-  
+
   // If total volume <= 2.5L, no split needed
   if (totalVolume <= MAX_VOLUME_ML) {
     return undefined;
   }
-  
+
   // Split items into optimized sub-bills
   const subBills: any[] = [];
   let currentSubBill: any[] = [];
   let currentVolume = 0;
-  
+
   // Sort items by volume (largest first) for better optimization
-  const sortedItems = [...items].sort((a, b) => 
+  const sortedItems = [...items].sort((a, b) =>
     (b.volumePerUnitML * b.quantity) - (a.volumePerUnitML * a.quantity)
   );
-  
+
   for (const item of sortedItems) {
     const itemVolume = item.volumePerUnitML * item.quantity;
-    
+
     // If single item exceeds max volume, split the item
     if (itemVolume > MAX_VOLUME_ML) {
       const bottlesPerSubBill = Math.floor(MAX_VOLUME_ML / item.volumePerUnitML);
       let remainingQuantity = item.quantity;
-      
+
       while (remainingQuantity > 0) {
         const quantityForThisSubBill = Math.min(bottlesPerSubBill, remainingQuantity);
         const subBillItem = {
@@ -68,40 +67,40 @@ function splitBillByVolume(items: any[], totalAmount: number) {
           subTotal: item.rate * quantityForThisSubBill,
           finalAmount: (item.rate * quantityForThisSubBill),
         };
-        
+
         if (currentSubBill.length > 0) {
           subBills.push([...currentSubBill]);
           currentSubBill = [];
           currentVolume = 0;
         }
-        
+
         subBills.push([subBillItem]);
         remainingQuantity -= quantityForThisSubBill;
       }
       continue;
     }
-    
+
     // If adding this item would exceed max volume, start new sub-bill
     if (currentVolume + itemVolume > MAX_VOLUME_ML && currentSubBill.length > 0) {
       subBills.push([...currentSubBill]);
       currentSubBill = [];
       currentVolume = 0;
     }
-    
+
     currentSubBill.push(item);
     currentVolume += itemVolume;
   }
-  
+
   // Add remaining items as last sub-bill
   if (currentSubBill.length > 0) {
     subBills.push(currentSubBill);
   }
-  
+
   // Calculate payment distribution proportionally
   return subBills.map(subBillItems => {
     const subBillTotal = subBillItems.reduce((sum: number, item: any) => sum + item.finalAmount, 0);
     const proportion = subBillTotal / totalAmount;
-    
+
     return {
       items: subBillItems,
       subTotalAmount: subBillItems.reduce((sum: number, item: any) => sum + item.subTotal, 0),
@@ -117,7 +116,7 @@ function splitBillByVolume(items: any[], totalAmount: number) {
 
 export async function POST(request: NextRequest) {
   let session: any = null;
-  
+
   try {
     // Verify authentication
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
@@ -143,9 +142,6 @@ export async function POST(request: NextRequest) {
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'No items provided' }, { status: 400 });
     }
-
-    registerAllModels();
-    
     // Get tenant connection and models
     const connection = await getTenantConnection(tenantId);
     const ProductDetails = getTenantModel(connection, 'Product');
@@ -173,7 +169,7 @@ export async function POST(request: NextRequest) {
       // Update product stocks
       product.morningStock = item.closingStock; // Tomorrow's morning stock is today's closing
       product.currentStock = item.closingStock;
-      product.morningStockLastUpdatedDate = new Date(nextMorningDate); 
+      product.morningStockLastUpdatedDate = new Date(nextMorningDate);
       product.morningStockUpdateDate = new Date(nextMorningDate);
       await product.save({ session });
       productUpdates.push(product._id);
@@ -224,21 +220,21 @@ export async function POST(request: NextRequest) {
 
     // Generate bill for discrepancies (shortages only) - using sales logic
     let generatedBill = null;
-    
+
     if (discrepancyItems.length > 0) {
       const billCount = await Bill.countDocuments().session(session);
       const totalBillId = `DISC-${Date.now()}-${billCount + 1}`;
-      
+
       // Calculate totals
       const totalQuantity = discrepancyItems.reduce((sum, item) => sum + item.quantity, 0);
       const totalVolume = discrepancyItems.reduce((sum, item) => sum + (item.quantity * item.volumePerUnitML), 0);
       const subTotalAmount = discrepancyItems.reduce((sum, item) => sum + item.subTotal, 0);
       const totalAmount = discrepancyItems.reduce((sum, item) => sum + item.finalAmount, 0);
       const uniqueVendorIds = Array.from(new Set(discrepancyItems.map(item => item.vendorId)));
-      
+
       // Split into optimized sub-bills if total volume > 2.5L (like sales entry)
       const subBills = splitBillByVolume(discrepancyItems, totalAmount);
-      
+
       console.log(`📊 Total volume: ${totalVolume}ML, Sub-bills: ${subBills ? subBills.length : 0}`);
 
       // Create ONE bill with sub-bills inside (like sales entry)
@@ -275,7 +271,7 @@ export async function POST(request: NextRequest) {
       generatedBill = billDoc[0];
 
       console.log(`📄 Generated discrepancy bill: ${totalBillId} with ${subBills ? subBills.length : 0} sub-bills for ₹${totalAmount.toFixed(2)}`);
-      
+
       // Note: We don't deduct vendor stock here because:
       // 1. The shortage already happened (stock was sold/lost)
       // 2. Vendor stock was already deducted during actual sales
@@ -307,7 +303,7 @@ export async function POST(request: NextRequest) {
       await session.abortTransaction();
       console.error('❌ Transaction aborted:', error);
     }
-    
+
     return NextResponse.json(
       { error: error.message || 'Failed to update closing stock' },
       { status: 500 }
