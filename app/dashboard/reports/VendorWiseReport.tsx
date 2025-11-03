@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/dashboard/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { apiFetch } from '@/lib/api-client';
 import { Button } from '@/app/dashboard/components/ui/button';
 import { Input } from '@/app/dashboard/components/ui/input';
 import {
@@ -74,12 +75,7 @@ export function VendorWiseReport() {
       const organization = JSON.parse(orgData);
       const orgId = organization._id || organization.id;
 
-      const response = await fetch(`/api/reports/vendor-wise?fromDate=${fromDate}&toDate=${toDate}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-tenant-id': orgId,
-        },
-      });
+      const response = await apiFetch(`/api/reports/vendor-wise?fromDate=${fromDate}&toDate=${toDate}`);
 
       if (!response.ok) throw new Error('Failed to fetch report');
       
@@ -113,12 +109,7 @@ export function VendorWiseReport() {
       const day = String(today.getDate()).padStart(2, '0');
       const todayStr = `${year}-${month}-${day}`;
 
-      const response = await fetch(`/api/reports/quick-report?date=${todayStr}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-tenant-id': orgId,
-        },
-      });
+      const response = await apiFetch(`/api/reports/quick-report?date=${todayStr}`);
 
       if (!response.ok) throw new Error('Failed to download report');
       

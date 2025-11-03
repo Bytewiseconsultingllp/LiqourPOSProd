@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/dashboard/components/ui/dialog';
+import { apiFetch } from '@/lib/api-client';
 import { Button } from '@/app/dashboard/components/ui/button';
 import {
   Table,
@@ -82,15 +83,7 @@ export function PaymentHistoryDialog({
       const organization = JSON.parse(orgData);
       const orgId = organization._id || organization.id;
 
-      const response = await fetch(
-        `/api/payments/history/${customer._id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-tenant-id': orgId,
-          },
-        }
-      );
+      const response = await apiFetch(`/api/payments/history/${customer._id}`);
 
       if (!response.ok) throw new Error('Failed to fetch payment history');
 
@@ -125,15 +118,10 @@ export function PaymentHistoryDialog({
       const organization = JSON.parse(orgData);
       const orgId = organization._id || organization.id;
 
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/payments/revert/${selectedPayment._id}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'x-tenant-id': orgId,
-          },
           body: JSON.stringify({
             customerId: customer._id,
           }),

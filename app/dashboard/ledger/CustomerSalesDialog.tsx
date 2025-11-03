@@ -1,12 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/app/dashboard/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/dashboard/components/ui/dialog';
+import { apiFetch } from '@/lib/api-client';
 import { Input } from '@/app/dashboard/components/ui/input';
 import { Button } from '@/app/dashboard/components/ui/button';
 import { Card } from '@/app/dashboard/components/ui/card';
@@ -83,14 +79,8 @@ export function CustomerSalesDialog({
       const organization = JSON.parse(orgData);
       const orgId = organization._id || organization.id;
 
-      const response = await fetch(
-        `/api/bills/customer/${customer._id}?fromDate=${fromDate}&toDate=${toDate}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-tenant-id': orgId,
-          },
-        }
+      const response = await apiFetch(
+        `/api/bills/customer/${customer._id}?fromDate=${fromDate}&toDate=${toDate}`
       );
 
       if (!response.ok) throw new Error('Failed to fetch bills');

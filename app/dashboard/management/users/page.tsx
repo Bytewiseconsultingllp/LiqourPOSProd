@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-client';
 
 interface User {
   _id: string;
@@ -54,9 +55,7 @@ export default function UsersManagementPage() {
 
   const fetchUsers = async (token: string) => {
     try {
-      const response = await fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const response = await apiFetch('/api/users');
 
       if (!response.ok) throw new Error('Failed to fetch users');
 
@@ -77,10 +76,9 @@ export default function UsersManagementPage() {
     if (!accessToken) return;
 
     try {
-      const response = await fetch('/api/users', {
+      const response = await apiFetch('/api/users', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
@@ -104,9 +102,8 @@ export default function UsersManagementPage() {
     if (!accessToken) return;
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await apiFetch(`/api/users/${userId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${accessToken}` },
       });
 
       if (!response.ok) {

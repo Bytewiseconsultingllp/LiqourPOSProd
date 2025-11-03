@@ -16,7 +16,7 @@
 //   const [selectedProduct, setSelectedProduct] = useState<ProductDetails | null>(null);
 //   const [searchTerm, setSearchTerm] = useState('');
 //   const [filterCategory, setFilterCategory] = useState<string>('all');
-  
+
 //   const [formData, setFormData] = useState({
 //     name: '',
 //     description: '',
@@ -241,7 +241,7 @@
 //             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 //           />
 //         </div>
-        
+
 //         <div className="flex gap-2">
 //           <div className="relative">
 //             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -462,7 +462,7 @@ export default function ProductsManagementPage() {
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [bulkUploadResults, setBulkUploadResults] = useState<any>(null);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -555,7 +555,7 @@ export default function ProductsManagementPage() {
     try {
       const organization = localStorage.getItem('organization');
       const tenantId = organization ? JSON.parse(organization).id : 'default';
-      
+
       const response = await apiFetch(`/api/products/${selectedProduct._id}`, {
         method: 'PUT',
         headers: {
@@ -582,13 +582,13 @@ export default function ProductsManagementPage() {
 
       const data = await response.json();
       console.log('Product updated successfully:', data);
-      
+
       await fetchProducts(accessToken);
       setShowEditModal(false);
       setSelectedProduct(null);
       resetForm();
       setError(''); // Clear any previous errors
-      
+
       // Show success message (you can replace this with a toast notification)
       alert('Product updated successfully!');
     } catch (err: any) {
@@ -606,7 +606,7 @@ export default function ProductsManagementPage() {
     try {
       const organization = localStorage.getItem('organization');
       const tenantId = organization ? JSON.parse(organization).id : 'default';
-      
+
       const response = await apiFetch(`/api/products/${productId}`, {
         method: 'DELETE',
       });
@@ -657,7 +657,7 @@ export default function ProductsManagementPage() {
     try {
       // Parse Excel file
       const products = await parseProductExcel(file);
-      
+
       if (products.length === 0) {
         toast.error('No valid products found in the file');
         return;
@@ -675,7 +675,7 @@ export default function ProductsManagementPage() {
       if (data.success) {
         setBulkUploadResults(data.results);
         toast.success(data.message);
-        
+
         // Refresh products list
         const accessToken = localStorage.getItem('accessToken');
         if (accessToken) fetchProducts(accessToken);
@@ -694,8 +694,8 @@ export default function ProductsManagementPage() {
   const categories = Array.from(new Set(products.map(p => p.category)));
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (product.brand && product.brand.toLowerCase().includes(searchTerm.toLowerCase()));
+      (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.brand && product.brand.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = filterCategory === 'all' || product.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
@@ -735,7 +735,7 @@ export default function ProductsManagementPage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        
+
         <div className="flex gap-2">
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -816,7 +816,7 @@ export default function ProductsManagementPage() {
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
@@ -861,15 +861,30 @@ export default function ProductsManagementPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <select
                     required
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  >
+                    <option value="">Select a category</option>
+                    <option value="Beer">Beer</option>
+                    <option value="Wine">Wine</option>
+                    <option value="Whisky">Whisky</option>
+                    <option value="Vodka">Vodka</option>
+                    <option value="Rum">Rum</option>
+                    <option value="Gin">Gin</option>
+                    <option value="Brandy">Brandy</option>
+                    <option value="Tequila">Tequila</option>
+                    <option value="Scotch">Scotch</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
+
+
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Volume (ML) *</label>

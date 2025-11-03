@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/dashboard/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { apiFetch } from '@/lib/api-client';
 import { Input } from '@/app/dashboard/components/ui/input';
 import { Calendar, Loader2, ShoppingCart, Package, DollarSign, FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -61,12 +62,7 @@ export function PurchaseSummaryReport() {
       const organization = JSON.parse(orgData);
       const orgId = organization._id || organization.id;
 
-      const response = await fetch(`/api/reports/purchase-summary?fromDate=${fromDate}&toDate=${toDate}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-tenant-id': orgId,
-        },
-      });
+      const response = await apiFetch(`/api/reports/purchase-summary?fromDate=${fromDate}&toDate=${toDate}`);
 
       if (!response.ok) throw new Error('Failed to fetch report');
       

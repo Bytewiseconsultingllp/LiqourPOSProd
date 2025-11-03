@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Power, PowerOff } from 'lucide-react';
 import { Promotion } from '@/types/promotion';
+import { apiFetch } from '@/lib/api-client';
 
 export default function PromotionsPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -17,12 +18,7 @@ export default function PromotionsPage() {
   const fetchPromotions = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/promotions', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/promotions');
 
       if (response.ok) {
         const data = await response.json();
@@ -37,12 +33,10 @@ export default function PromotionsPage() {
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/promotions/${id}`, {
+      const response = await apiFetch(`/api/promotions/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ isActive: !currentStatus }),
       });

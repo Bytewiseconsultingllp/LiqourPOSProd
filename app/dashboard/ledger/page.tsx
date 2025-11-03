@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/dashboard/components/ui/card';
 import { Input } from '@/app/dashboard/components/ui/input';
 import { Button } from '@/app/dashboard/components/ui/button';
@@ -58,12 +60,7 @@ export default function CustomerLedgerPage() {
       const organization = JSON.parse(orgData);
       const orgId = organization._id || organization.id;
 
-      const response = await fetch('/api/customers', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': orgId,
-        },
-      });
+      const response = await apiFetch('/api/customers');
 
       if (!response.ok) throw new Error('Failed to fetch customers');
 
