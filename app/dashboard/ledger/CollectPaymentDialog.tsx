@@ -44,10 +44,7 @@ export function CollectPaymentDialog({
 
   const handlePercentage = (percentage: number) => {
     const amount = (customer.outstandingBalance * percentage) / 100;
-    // Split 50-50 between cash and online by default
-    const halfAmount = amount / 2;
-    setCashAmount(halfAmount.toFixed(2));
-    setOnlineAmount(halfAmount.toFixed(2));
+    setCashAmount(amount.toFixed(2));
   };
 
   const handleFullCash = () => {
@@ -246,18 +243,16 @@ export function CollectPaymentDialog({
           {/* Remaining Balance */}
           {totalPayment > 0 && (
             <Card
-              className={`p-4 ${
-                remainingBalance > 0
+              className={`p-4 ${remainingBalance > 0
                   ? 'bg-orange-50 border-orange-200'
                   : 'bg-green-50 border-green-200'
-              }`}
+                }`}
             >
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Remaining Balance</span>
                 <span
-                  className={`text-2xl font-bold ${
-                    remainingBalance > 0 ? 'text-orange-600' : 'text-green-600'
-                  }`}
+                  className={`text-2xl font-bold ${remainingBalance > 0 ? 'text-orange-600' : 'text-green-600'
+                    }`}
                 >
                   ₹{remainingBalance.toFixed(2)}
                 </span>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, Edit, Search, Calendar, X, Tag } from 'lucide-react';
 import { IBill } from '@/models/Bill';
+import { Input } from '../../components/ui/input';
 
 export default function SalesManagementPage() {
   const router = useRouter();
@@ -310,7 +311,7 @@ export default function SalesManagementPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="text"
               placeholder="Search by Bill ID, Customer..."
               value={searchTerm}
@@ -320,7 +321,7 @@ export default function SalesManagementPage() {
           </div>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -330,7 +331,7 @@ export default function SalesManagementPage() {
           </div>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -566,8 +567,9 @@ export default function SalesManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Customer Name
                   </label>
-                  <input
+                  <Input
                     type="text"
+                    disabled
                     value={editFormData.customerName}
                     onChange={(e) =>
                       setEditFormData({ ...editFormData, customerName: e.target.value })
@@ -580,7 +582,8 @@ export default function SalesManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Customer Phone
                   </label>
-                  <input
+                  <Input
+                  disabled
                     type="text"
                     value={editFormData.customerPhone}
                     onChange={(e) =>
@@ -614,7 +617,7 @@ export default function SalesManagementPage() {
                           <td className="px-4 py-2 text-sm">{item.productName}</td>
                           <td className="px-4 py-2 text-sm">{item.brand}</td>
                           <td className="px-4 py-2">
-                            <input
+                            <Input
                               type="number"
                               value={item.quantity}
                               onChange={(e) =>
@@ -626,7 +629,7 @@ export default function SalesManagementPage() {
                             />
                           </td>
                           <td className="px-4 py-2">
-                            <input
+                            <Input
                               type="number"
                               value={item.rate}
                               onChange={(e) =>
@@ -639,7 +642,7 @@ export default function SalesManagementPage() {
                             />
                           </td>
                           <td className="px-4 py-2">
-                            <input
+                            <Input
                               type="number"
                               value={item.discountAmount}
                               onChange={(e) =>
@@ -679,7 +682,7 @@ export default function SalesManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Promotion & Offers Discount (₹)
                   </label>
-                  <input
+                  <Input
                     type="number"
                     value={editFormData.promotionDiscount || 0}
                     onChange={(e) =>
@@ -697,7 +700,7 @@ export default function SalesManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Additional Discount (₹)
                   </label>
-                  <input
+                  <Input
                     type="number"
                     value={editFormData.additionalDiscount || 0}
                     onChange={(e) =>

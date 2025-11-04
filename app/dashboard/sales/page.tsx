@@ -1,39 +1,37 @@
 "use client";
-import heroBg from "@/assets/hero-bg.jpg";
+import { SubBillsViewer } from "@/components/SubBillsViewer";
+import { ThermalBillPrint } from "@/components/ThermalBillPrint";
+import { apiFetch } from "@/lib/api-client";
 import { useCustomers } from "@/lib/hooks/useCustomers";
 import { useProducts } from "@/lib/hooks/useProducts";
 import { Customer } from "@/types/customer";
-import { apiFetch } from "@/lib/api-client";
 import { CartItem, Payment, ProductDetails } from "@/types/product";
 import {
   AlertCircle,
   CreditCard,
-  Loader2,
-  Phone,
-  User,
-  Wallet,
-  Scan,
+  CreditCardIcon,
   Eye,
   FileText,
   Layers,
-  CreditCardIcon,
+  Loader2,
+  Phone,
+  Scan,
+  User,
+  Wallet,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useMemo, useState, useEffect } from "react";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import { CreditPaymentDialog } from "./CreditPaymentDialog";
+import { Input } from "../components/ui/input";
+import { CollectPaymentDialog } from "../ledger/CollectPaymentDialog";
 import { CustomerSelector } from "./CustomerSelector";
 import { ProductCard } from "./ProductCard";
 import { ProductFilters } from "./ProductFilters";
 import { ProductSearch } from "./ProductSearch";
 import { QuantityDialog } from "./QuantityDialog";
 import { ShoppingCart } from "./ShoppingCart";
-import { Input } from "../components/ui/input";
-import { ThermalBillPrint } from "@/components/ThermalBillPrint";
-import { SubBillsViewer } from "@/components/SubBillsViewer";
-import { CollectPaymentDialog } from "../ledger/CollectPaymentDialog";
 
 const Index = () => {
   // Fetch products and customers from API
@@ -635,52 +633,6 @@ const Index = () => {
         </div>
 
         <div className="flex flex-col h-[100dvh] overflow-hidden">
-          {/* Customer Info */}
-          {/* {selectedCustomer && (
-            <div className="flex mb-3 gap-6">
-              <div className="flex-[2]">
-                <Card className="p-4 h-full">
-
-                  <div className="flex flex-wrap items-start gap-4">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Customer</p>
-                          <p className="font-semibold">{selectedCustomer.name}</p>
-                        </div>
-                      </div>
-
-                      {selectedCustomer.contactInfo.phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Phone</p>
-                            <p className="font-semibold">{selectedCustomer.contactInfo.phone}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedCustomer._id !== "walk-in" && selectedCustomer.type !== "Walk-In" && (
-                        <div className="flex items-center gap-2">
-                          <Wallet className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Credit Balance</p>
-                            <p className="font-semibold text-primary">
-                              ₹{selectedCustomer.creditLimit - (selectedCustomer.outstandingBalance ?? 0) || 0}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              </div>
-
-              <div className="flex-1" />
-            </div>
-          )} */}
-
 
           {/* Main Content */}
           <div className="flex flex-1 gap-6 overflow-hidden">
@@ -911,14 +863,6 @@ const Index = () => {
         initialQuantity={editingItem?.quantity}
         initialDiscount={editingItem?.discountAmount}
       />
-
-      {/* <CreditPaymentDialog
-        open={creditPaymentDialogOpen}
-        onClose={() => setCreditPaymentDialogOpen(false)}
-        customer={selectedCustomer}
-        onRecordPayment={handleRecordCreditPayment}
-      /> */}
-
 
       {
         selectedCustomer && (

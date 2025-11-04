@@ -14,6 +14,7 @@ const updateCustomerSchema = z.object({
   }).optional(),
   maxDiscountPercentage: z.number().min(0).max(100).optional(),
   walletBalance: z.number().min(0).optional(),
+  openingBalance: z.number().min(0).optional(),
   creditLimit: z.number().min(0).optional(),
   outstandingBalance: z.number().min(0).optional(),
   notes: z.string().optional(),

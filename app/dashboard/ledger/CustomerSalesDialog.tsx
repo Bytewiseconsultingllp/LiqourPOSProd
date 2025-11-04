@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/dashboard/components/ui/dialog';
-import { apiFetch } from '@/lib/api-client';
-import { Input } from '@/app/dashboard/components/ui/input';
 import { Button } from '@/app/dashboard/components/ui/button';
 import { Card } from '@/app/dashboard/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/dashboard/components/ui/dialog';
+import { Input } from '@/app/dashboard/components/ui/input';
 import {
   Table,
   TableBody,
@@ -14,7 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/dashboard/components/ui/table';
+import { apiFetch } from '@/lib/api-client';
 import { Calendar, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface Customer {
@@ -22,21 +22,6 @@ interface Customer {
   name: string;
   outstandingBalance: number;
 }
-
-interface Bill {
-  _id: string;
-  totalBillId: string;
-  saleDate: string;
-  totalAmount: number;
-  totalQuantityBottles: number;
-  payment: {
-    mode: string;
-    cashAmount: number;
-    onlineAmount: number;
-    creditAmount: number;
-  };
-}
-
 interface CustomerSalesDialogProps {
   customer: Customer;
   open: boolean;
@@ -48,7 +33,7 @@ export function CustomerSalesDialog({
   open,
   onClose,
 }: CustomerSalesDialogProps) {
-  const [bills, setBills] = useState<Bill[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fromDate, setFromDate] = useState<string>(() => {
     const date = new Date();
@@ -63,7 +48,7 @@ export function CustomerSalesDialog({
     if (open) {
       fetchBills();
     }
-  }, [open, fromDate, toDate]);
+  }, [open, customer._id, fromDate, toDate]);
 
   const fetchBills = async () => {
     try {
@@ -100,6 +85,15 @@ export function CustomerSalesDialog({
     (sum, bill) => sum + bill.totalQuantityBottles,
     0
   );
+  const totalSubtotal = bills.reduce(
+    (sum, bill) => sum + (bill.subTotalAmount || bill.totalAmount),
+    0
+  );
+  const totalDiscount = bills.reduce(
+    (sum, bill) => sum + ((bill.promotionDiscountAmount || 0) + (bill.billDiscountAmount || 0) + (bill.itemDiscountAmount || 0)),
+    0
+  );
+
   const totalCash = bills.reduce(
     (sum, bill) => sum + (bill.payment?.cashAmount || 0),
     0
@@ -155,7 +149,7 @@ export function CustomerSalesDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6">
           {/* Bills Table */}
           <div>
             <h3 className="text-lg font-semibold mb-3">Bills</h3>
@@ -171,6 +165,8 @@ export function CustomerSalesDialog({
                       <TableHead>Bill ID</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Subtotal</TableHead>
+                      <TableHead className="text-right">Discount</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -178,7 +174,7 @@ export function CustomerSalesDialog({
                     {bills.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={6}
                           className="text-center py-8 text-muted-foreground"
                         >
                           No bills found for the selected date range
@@ -195,6 +191,12 @@ export function CustomerSalesDialog({
                           </TableCell>
                           <TableCell className="text-right">
                             {bill.totalQuantityBottles}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ₹{(bill.subTotalAmount || bill.totalAmount).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right text-red-600">
+                            ₹{(bill.totalDiscountAmount || 0).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right font-semibold">
                             ₹{bill.totalAmount.toFixed(2)}
@@ -221,6 +223,18 @@ export function CustomerSalesDialog({
                   Total Quantity
                 </p>
                 <p className="text-2xl font-bold">{totalQuantity}</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-sm text-muted-foreground mb-1">Total Subtotal</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  ₹{totalSubtotal.toFixed(2)}
+                </p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-sm text-muted-foreground mb-1">Total Discount</p>
+                <p className="text-2xl font-bold text-red-600">
+                  ₹{totalDiscount.toFixed(2)}
+                </p>
               </Card>
               <Card className="p-4">
                 <p className="text-sm text-muted-foreground mb-1">Total Sales</p>

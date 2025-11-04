@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Customer } from '@/types/customer';
 import { Plus, Edit2, Trash2, Search, Loader2, X } from 'lucide-react';
+import { Input } from '../../components/ui/input';
 
 export default function CustomerManagementPage() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function CustomerManagementPage() {
     state: '',
     pincode: '',
     creditLimit: 0,
-    walletBalance: 0,
+    openingBalance: 0,
     maxDiscountPercentage: 10,
     isActive: true,
   });
@@ -95,7 +96,7 @@ export default function CustomerManagementPage() {
         state: '',
         pincode: '',
         creditLimit: customer.creditLimit || 0,
-        walletBalance: customer.walletBalance || 0,
+        openingBalance: customer.openingBalance || 0,
         maxDiscountPercentage: customer.maxDiscountPercentage || 10,
         isActive: customer.isActive !== false,
       });
@@ -111,7 +112,7 @@ export default function CustomerManagementPage() {
         state: '',
         pincode: '',
         creditLimit: 0,
-        walletBalance: 0,
+        openingBalance: 0,
         maxDiscountPercentage: 10,
         isActive: true,
       });
@@ -173,8 +174,8 @@ export default function CustomerManagementPage() {
             address: formData.address,
           },
           creditLimit: formData.creditLimit,
-          openingBalance: formData.walletBalance,
-          outstandingBalance:formData.walletBalance,
+          openingBalance: formData.openingBalance,
+          outstandingBalance:formData.openingBalance,
           maxDiscountPercentage: formData.maxDiscountPercentage,
           isActive: formData.isActive,
         }),
@@ -277,7 +278,7 @@ export default function CustomerManagementPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search customers..."
                 value={searchTerm}
@@ -433,7 +434,7 @@ export default function CustomerManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Name *</label>
-                  <input
+                  <Input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -456,7 +457,7 @@ export default function CustomerManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Phone *</label>
-                  <input
+                  <Input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -466,7 +467,7 @@ export default function CustomerManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Email</label>
-                  <input
+                  <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -475,7 +476,7 @@ export default function CustomerManagementPage() {
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium mb-2">Address</label>
-                  <input
+                  <Input
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -484,7 +485,7 @@ export default function CustomerManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">City</label>
-                  <input
+                  <Input
                     type="text"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
@@ -493,7 +494,7 @@ export default function CustomerManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">State</label>
-                  <input
+                  <Input
                     type="text"
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
@@ -502,7 +503,7 @@ export default function CustomerManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Credit Limit (₹)</label>
-                  <input
+                  <Input
                     type="number"
                     value={formData.creditLimit}
                     onChange={(e) => setFormData({ ...formData, creditLimit: parseFloat(e.target.value) || 0 })}
@@ -511,16 +512,16 @@ export default function CustomerManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Opening Balance (₹)</label>
-                  <input
+                  <Input
                     type="number"
-                    value={formData.walletBalance}
-                    onChange={(e) => setFormData({ ...formData, walletBalance: parseFloat(e.target.value) || 0 })}
+                    value={formData.openingBalance}
+                    onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })}
                     className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Max Discount (%)</label>
-                  <input
+                  <Input
                     type="number"
                     value={formData.maxDiscountPercentage}
                     onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
@@ -533,7 +534,7 @@ export default function CustomerManagementPage() {
                 </div>
                 <div className="flex items-center">
                   <label className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="checkbox"
                       checked={formData.isActive}
                       onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}

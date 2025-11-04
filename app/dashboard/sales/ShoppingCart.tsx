@@ -90,11 +90,14 @@ export function ShoppingCart({
       setOnlineAmount(0);
       setCreditAmount(0);
     } else {
-      setCreditAmount(grandTotal);
-      setCashAmount(0);
+      // Allocate up to available credit, remainder to cash
+      const credit = Math.min(grandTotal, availableCredit);
+      const cash = Math.max(0, grandTotal - credit);
+      setCreditAmount(credit);
+      setCashAmount(cash);
       setOnlineAmount(0);
     }
-  }, [paymentMethod, grandTotal]);
+  }, [paymentMethod, grandTotal, availableCredit]);
 
   const handlePaymentMethodChange = (value: string) => {
     setPaymentMethod(value as "cash" | "credit");
@@ -431,9 +434,12 @@ export function ShoppingCart({
                       value={cashAmount}
                       onChange={(e) => {
                         const cash = parseFloat(e.target.value) || 0;
-                        setCashAmount(cash);
-                        const remaining = grandTotal - cash - onlineAmount;
-                        setCreditAmount(Math.max(0, remaining));
+                        // Compute desired credit from remaining and cap at availableCredit
+                        const remaining = Math.max(0, grandTotal - cash - onlineAmount);
+                        const credit = Math.min(remaining, availableCredit);
+                        const adjustedCash = Math.max(0, grandTotal - onlineAmount - credit);
+                        setCashAmount(adjustedCash);
+                        setCreditAmount(credit);
                       }}
                       min="0"
                       className="h-9"
@@ -446,9 +452,13 @@ export function ShoppingCart({
                       value={onlineAmount}
                       onChange={(e) => {
                         const online = parseFloat(e.target.value) || 0;
+                        // Compute desired credit from remaining and cap at availableCredit
+                        const remaining = Math.max(0, grandTotal - cashAmount - online);
+                        const credit = Math.min(remaining, availableCredit);
+                        const adjustedCash = Math.max(0, grandTotal - online - credit);
                         setOnlineAmount(online);
-                        const remaining = grandTotal - cashAmount - online;
-                        setCreditAmount(Math.max(0, remaining));
+                        setCreditAmount(credit);
+                        setCashAmount(adjustedCash);
                       }}
                       min="0"
                       className="h-9"
@@ -466,12 +476,14 @@ export function ShoppingCart({
                       value={creditAmount}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
+                        let newCredit = Math.max(0, Math.min(value, availableCredit));
                         if (value > availableCredit) {
                           toast.error(`Credit amount cannot exceed available credit of ₹${availableCredit.toFixed(2)}`);
-                          setCreditAmount(availableCredit);
-                        } else {
-                          setCreditAmount(value);
                         }
+                        // Auto-balance cash so that cash + online + credit = grandTotal
+                        const adjustedCash = Math.max(0, grandTotal - onlineAmount - newCredit);
+                        setCreditAmount(newCredit);
+                        setCashAmount(adjustedCash);
                       }}
                       min="0"
                       max={availableCredit}
