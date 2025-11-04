@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, Edit, Search, Calendar, X } from 'lucide-react';
 import { IPurchase } from '@/models/Purchase';
+import { Input } from '../../components/ui/input';
 
 export default function PurchaseManagementPage() {
   const router = useRouter();
@@ -156,7 +157,7 @@ export default function PurchaseManagementPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="text"
               placeholder="Search by Purchase #, Vendor, Invoice..."
               value={searchTerm}
@@ -166,7 +167,7 @@ export default function PurchaseManagementPage() {
           </div>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -176,7 +177,7 @@ export default function PurchaseManagementPage() {
           </div>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -402,7 +403,7 @@ export default function PurchaseManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Invoice Number
                   </label>
-                  <input
+                  <Input
                     type="text"
                     value={editFormData.invoiceNumber}
                     onChange={(e) => setEditFormData({ ...editFormData, invoiceNumber: e.target.value })}
@@ -413,7 +414,7 @@ export default function PurchaseManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tax Amount
                   </label>
-                  <input
+                  <Input
                     type="number"
                     value={editFormData.taxAmount}
                     onChange={(e) => setEditFormData({ ...editFormData, taxAmount: parseFloat(e.target.value) })}
@@ -426,7 +427,7 @@ export default function PurchaseManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Paid Amount
                   </label>
-                  <input
+                  <Input
                     type="number"
                     value={editFormData.paidAmount}
                     onChange={(e) => setEditFormData({ ...editFormData, paidAmount: parseFloat(e.target.value) })}
@@ -439,7 +440,7 @@ export default function PurchaseManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Notes
                   </label>
-                  <input
+                  <Input
                     type="text"
                     value={editFormData.notes}
                     onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
@@ -467,7 +468,7 @@ export default function PurchaseManagementPage() {
                         <td className="px-4 py-2 text-sm">{item.productName}</td>
                         <td className="px-4 py-2 text-sm">{item.brand}</td>
                         <td className="px-4 py-2">
-                          <input
+                          <Input
                             type="number"
                             value={item.quantity}
                             onChange={(e) => updateItemField(idx, 'quantity', parseInt(e.target.value))}
@@ -477,7 +478,7 @@ export default function PurchaseManagementPage() {
                           />
                         </td>
                         <td className="px-4 py-2">
-                          <input
+                          <Input
                             type="number"
                             value={item.purchasePricePerUnit}
                             onChange={(e) => updateItemField(idx, 'purchasePricePerUnit', parseFloat(e.target.value))}
@@ -488,7 +489,7 @@ export default function PurchaseManagementPage() {
                           />
                         </td>
                         <td className="px-4 py-2">
-                          <input
+                          <Input
                             type="text"
                             value={item.batchNumber}
                             onChange={(e) => updateItemField(idx, 'batchNumber', e.target.value)}

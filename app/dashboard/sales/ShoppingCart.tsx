@@ -334,6 +334,7 @@ export function ShoppingCart({
                 min="0"
                 max={remainingDiscountAllowed}
                 className="h-9"
+                disabled={customer?._id === 'walk-in' || customer?.type === 'Walk-In'}
               />
             </div>
 

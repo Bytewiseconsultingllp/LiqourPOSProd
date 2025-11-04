@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Barcode, Camera, X, Check, AlertCircle, Scan } from 'lucide-react';
+import { Input } from '@/app/dashboard/components/ui/input';
 
 interface UniversalBarcodeScannerProps {
   onScan: (barcode: string) => void;
@@ -392,7 +393,7 @@ export default function UniversalBarcodeScanner({
                   Or enter barcode manually:
                 </p>
                 <form onSubmit={handleManualSubmit} className="flex gap-2">
-                  <input
+                  <Input
                     type="text"
                     id="barcode-scanner-input"
                     value={manualCode}

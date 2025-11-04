@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import UniversalBarcodeScanner from '@/components/UniversalBarcodeScanner';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { Input } from '@/app/dashboard/components/ui/input';
 
 /**
  * Example 1: Basic Scanner with Dialog
@@ -122,7 +123,7 @@ export function BackgroundScannerExample() {
       
       <div className="mb-4">
         <label className="flex items-center gap-2">
-          <input
+          <Input
             type="checkbox"
             checked={isActive}
             onChange={(e) => setIsActive(e.target.checked)}

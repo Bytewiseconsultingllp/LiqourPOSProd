@@ -61,7 +61,7 @@ const [formData, setFormData] = useState({
 ```tsx
 <div>
   <label className="block text-sm font-medium mb-2">CIN *</label>
-  <input
+  <Input
     type="text"
     value={formData.cin}
     onChange={(e) => setFormData({ ...formData, cin: e.target.value.toUpperCase() })}
@@ -76,7 +76,7 @@ const [formData, setFormData] = useState({
 ```tsx
 <div>
   <label className="block text-sm font-medium mb-2">Account Name *</label>
-  <input
+  <Input
     type="text"
     value={formData.accountName}
     onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}

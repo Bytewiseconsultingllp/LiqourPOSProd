@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Input } from '../components/ui/input';
 
 interface User {
   _id: string;
@@ -261,7 +262,7 @@ export default function UsersPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Name
                 </label>
-                <input
+                <Input
                   type="text"
                   required
                   value={formData.name}
@@ -273,7 +274,7 @@ export default function UsersPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Email
                 </label>
-                <input
+                <Input
                   type="email"
                   required
                   value={formData.email}
@@ -285,7 +286,7 @@ export default function UsersPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Password
                 </label>
-                <input
+                <Input
                   type="password"
                   required
                   value={formData.password}

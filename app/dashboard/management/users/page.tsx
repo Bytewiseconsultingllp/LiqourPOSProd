@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
+import { Input } from '../../components/ui/input';
 
 interface User {
   _id: string;
@@ -176,7 +177,7 @@ export default function UsersManagementPage() {
             {/* Search */}
             <div className="md:col-span-2">
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   placeholder="Search by name or email..."
                   value={searchTerm}
@@ -290,7 +291,7 @@ export default function UsersManagementPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Name
                 </label>
-                <input
+                <Input
                   type="text"
                   required
                   value={formData.name}
@@ -302,7 +303,7 @@ export default function UsersManagementPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email
                 </label>
-                <input
+                <Input
                   type="email"
                   required
                   value={formData.email}
@@ -314,7 +315,7 @@ export default function UsersManagementPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Password
                 </label>
-                <input
+                <Input
                   type="password"
                   required
                   value={formData.password}

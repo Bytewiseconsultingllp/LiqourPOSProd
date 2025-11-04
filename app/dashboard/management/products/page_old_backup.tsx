@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProductDetails } from '@/types/product';
+import { Input } from '../../components/ui/input';
 
 export default function ProductsManagementPage() {
   const router = useRouter();
@@ -258,7 +259,7 @@ export default function ProductsManagementPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   placeholder="Search products..."
                   value={searchTerm}
@@ -393,7 +394,7 @@ export default function ProductsManagementPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product Name *</label>
-                  <input
+                  <Input
                     type="text"
                     required
                     value={formData.name}
@@ -403,7 +404,7 @@ export default function ProductsManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand *</label>
-                  <input
+                  <Input
                     type="text"
                     required
                     value={formData.brand}
@@ -426,7 +427,7 @@ export default function ProductsManagementPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category *</label>
-                  <input
+                  <Input
                     type="text"
                     required
                     value={formData.category}
@@ -436,7 +437,7 @@ export default function ProductsManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">SKU</label>
-                  <input
+                  <Input
                     type="text"
                     value={formData.sku}
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
@@ -445,7 +446,7 @@ export default function ProductsManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Barcode</label>
-                  <input
+                  <Input
                     type="text"
                     value={formData.barcode}
                     onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
@@ -457,7 +458,7 @@ export default function ProductsManagementPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price/Unit (₹) *</label>
-                  <input
+                  <Input
                     type="number"
                     step="0.01"
                     required
@@ -468,7 +469,7 @@ export default function ProductsManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Volume (ML) *</label>
-                  <input
+                  <Input
                     type="number"
                     required
                     value={formData.volumeML}
@@ -478,7 +479,7 @@ export default function ProductsManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Stock *</label>
-                  <input
+                  <Input
                     type="number"
                     required
                     value={formData.currentStock}
@@ -488,7 +489,7 @@ export default function ProductsManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reorder Level</label>
-                  <input
+                  <Input
                     type="number"
                     value={formData.reorderLevel}
                     onChange={(e) => setFormData({ ...formData, reorderLevel: e.target.value })}

@@ -43,6 +43,15 @@ export function QuantityDialog({
   }, [open, initialQuantity, initialDiscount]);
 
   const handleConfirm = () => {
+    const maxQty = typeof product?.currentStock === 'number' ? product.currentStock : undefined;
+    if (maxQty !== undefined && quantity > maxQty) {
+      toast.error(`Quantity cannot exceed available stock (${maxQty}).`);
+      return;
+    }
+    if (maxQty !== undefined && maxQty <= 0) {
+      toast.error('This item is out of stock.');
+      return;
+    }
     onConfirm(quantity, discount);
     onClose();
   };
@@ -94,14 +103,23 @@ export function QuantityDialog({
                   } else {
                     const parsed = parseInt(value);
                     if (!isNaN(parsed) && parsed >= 0) {
-                      setQuantity(parsed);
+                      const maxQty = typeof product.currentStock === 'number' ? product.currentStock : undefined;
+                      const next = maxQty !== undefined ? Math.min(parsed, maxQty) : parsed;
+                      setQuantity(next);
                     }
                   }
                 }}
                 onBlur={() => {
                   // Ensure minimum of 1 when user leaves the field
+                  const maxQty = typeof product.currentStock === 'number' ? product.currentStock : undefined;
                   if (quantity === 0 || isNaN(quantity)) {
-                    setQuantity(1);
+                    if (maxQty !== undefined && maxQty <= 0) {
+                      setQuantity(0);
+                    } else {
+                      setQuantity(1);
+                    }
+                  } else if (maxQty !== undefined) {
+                    setQuantity(Math.min(quantity, maxQty));
                   }
                 }}
                 className="text-center"
@@ -112,15 +130,18 @@ export function QuantityDialog({
                 size="icon"
                 onClick={() => {
                   const newQty = (quantity || 0) + 1;
-                  setQuantity(Math.min(product.currentStock, newQty));
+                  const cap = typeof product.currentStock === 'number' ? product.currentStock : Number.POSITIVE_INFINITY;
+                  setQuantity(Math.min(cap, newQty));
                 }}
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Max available: {product.currentStock} bottles
-            </p>
+            {product.currentStock != null && (
+              <p className="text-xs text-muted-foreground">
+                Max available: {(product.currentStock ?? 0)} bottles
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -147,6 +168,7 @@ export function QuantityDialog({
               placeholder="0"
               min="0"
               max={maxDiscountPerBottle}
+              disabled={customer?._id === 'walk-in' || customer?.type === 'Walk-In'}
             />
           </div>
 
@@ -170,7 +192,14 @@ export function QuantityDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm}>
+          <Button
+            onClick={handleConfirm}
+            disabled={
+              (typeof product.currentStock === 'number' && product.currentStock <= 0) ||
+              quantity <= 0 ||
+              (typeof product.currentStock === 'number' && quantity > product.currentStock)
+            }
+          >
             Add to Cart
           </Button>
         </DialogFooter>

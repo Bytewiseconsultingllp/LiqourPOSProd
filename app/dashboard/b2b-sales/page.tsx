@@ -29,8 +29,8 @@ import { ProductSearch } from "../sales/ProductSearch";
 import { Input } from "../components/ui/input";
 import { ThermalBillPrint } from "@/components/ThermalBillPrint";
 import { SubBillsViewer } from "@/components/SubBillsViewer";
-import { B2BQuantityDialog } from "./B2BQuantityDialog";
 import { B2BShoppingCart } from "./B2BShoppingCart";
+import { B2BQuantityDialog } from "./B2BQuantityDialog";
 
 // B2B Cart Item interface (no discounts)
 export interface B2BCartItem {
@@ -70,11 +70,16 @@ const B2BSalesPage = () => {
     refetch: refetchProducts,
   } = useProducts({ isActive: true });
   const {
-    customers,
+    customers: allCustomers,
     loading: customersLoading,
     error: customersError,
     refetch: refetchCustomers,
   } = useCustomers({ isActive: true });
+
+  // Filter only B2B customers
+  const customers = useMemo(() => {
+    return allCustomers.filter(c => c.type === 'B2B' || c._id === 'walk-in');
+  }, [allCustomers]);
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null
@@ -112,17 +117,18 @@ const B2BSalesPage = () => {
 
   useEffect(() => {
     if (!selectedCustomer) return;
-    const updated = customers.find((c) => c._id === selectedCustomer._id);
+    const updated = allCustomers.find((c) => c._id === selectedCustomer._id);
     if (updated && updated !== selectedCustomer) {
       setSelectedCustomer(updated);
     }
-  }, [customers, selectedCustomer]);
+  }, [allCustomers, selectedCustomer]);
 
   const fetchRecentSales = async () => {
     try {
       setSalesLoading(true);
-      const response = await apiFetch("/api/bills?limit=10");
-      setRecentSales(response.data || []);
+      const response = await apiFetch("/api/sales?limit=10");
+      const data = await response.json();
+      setRecentSales(data.data || []);
     } catch (error: any) {
       console.error("Failed to fetch recent sales:", error);
     } finally {
@@ -167,7 +173,7 @@ const B2BSalesPage = () => {
       return product.pricePerUnit;
     }
     // Sort by effectiveFrom date and get the latest
-    const sorted = [...product.purchasePricePerUnit].sort((a, b) => 
+    const sorted = [...product.purchasePricePerUnit].sort((a, b) =>
       new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime()
     );
     return sorted[0].purchasePrice || product.pricePerUnit;
@@ -221,13 +227,13 @@ const B2BSalesPage = () => {
       prev.map((item) =>
         item._id === editingItem._id
           ? {
-              ...item,
-              quantity,
-              vendorId,
-              rate: purchasePrice,
-              subTotal,
-              finalAmount: subTotal,
-            }
+            ...item,
+            quantity,
+            vendorId,
+            rate: purchasePrice,
+            subTotal,
+            finalAmount: subTotal,
+          }
           : item
       )
     );
@@ -318,7 +324,7 @@ const B2BSalesPage = () => {
         billDiscountAmount: 0,
         promotionDiscountAmount: 0,
         appliedPromotions: [], // No promotions
-        totalAmount,
+        totalAmount: totalAmount,
         saleDate: new Date(billDate).toISOString(),
         payment: {
           mode: payment.mode,
@@ -335,21 +341,21 @@ const B2BSalesPage = () => {
         },
       };
 
-      const response = await apiFetch("/api/bills", {
+      const response = await apiFetch("/api/sales/B2BCreate", {
         method: "POST",
         body: JSON.stringify(billData),
       });
-
-      if (response.success) {
+      const data = await response.json();
+      if (response.ok) {
         toast.success("B2B Sale completed successfully!");
-        
+
         // Show bill
-        setViewingBill(response.data);
+        setViewingBill(data.data);
         setViewBillType('main');
 
         // Clear cart
         setCartItems([]);
-        
+
         // Refresh data
         await Promise.all([
           refetchProducts(),
@@ -357,7 +363,7 @@ const B2BSalesPage = () => {
           fetchRecentSales(),
         ]);
       } else {
-        throw new Error(response.error || "Failed to complete sale");
+        throw new Error(data.error || "Failed to complete sale");
       }
     } catch (error: any) {
       console.error("Sale error:", error);
@@ -399,15 +405,15 @@ const B2BSalesPage = () => {
   return (
     <div
       className="min-h-screen bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: `url(${heroBg.src})` }}
+    // style={{ backgroundImage: `url(${heroBg.src})` }}
     >
-      <div className="min-h-screen bg-black/40 backdrop-blur-sm">
+      <div className="min-h-screen backdrop-blur-sm">
         <div className="container mx-auto p-4">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-4xl font-bold text-white mb-2">B2B Sales (Purchase Price)</h1>
-            <p className="text-white/80">
-              Sales using purchase prices with VAT (35%) and TCS (1.35%) calculations
+            <h1 className="text-4xl font-bold text-black mb-2">B2B Sales (Purchase Price)</h1>
+            <p className="text-black/80">
+              Sales using purchase prices with VAT (35%) and TCS (1%) calculations
             </p>
           </div>
 
@@ -421,9 +427,8 @@ const B2BSalesPage = () => {
                   <h2 className="text-xl font-bold mb-4">Select Customer</h2>
                   <CustomerSelector
                     customers={customers}
-                    onSelect={setSelectedCustomer}
-                    loading={customersLoading}
-                    error={customersError}
+                    selectedCustomer={selectedCustomer}
+                    onSelectCustomer={setSelectedCustomer}
                   />
                 </Card>
               ) : (
@@ -581,15 +586,14 @@ const B2BSalesPage = () => {
                           <td className="px-4 py-3 text-sm text-right font-semibold">₹{sale.totalAmount?.toFixed(2)}</td>
                           <td className="px-4 py-3 text-sm">
                             <span
-                              className={`px-2 py-1 rounded text-xs font-medium ${
-                                sale.payment?.mode === "Cash"
-                                  ? "bg-green-100 text-green-800"
-                                  : sale.payment?.mode === "Online"
+                              className={`px-2 py-1 rounded text-xs font-medium ${sale.payment?.mode === "Cash"
+                                ? "bg-green-100 text-green-800"
+                                : sale.payment?.mode === "Online"
                                   ? "bg-blue-100 text-blue-800"
                                   : sale.payment?.mode === "Credit"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
+                                    ? "bg-orange-100 text-orange-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
                             >
                               {sale.payment?.mode}
                             </span>
@@ -653,8 +657,7 @@ const B2BSalesPage = () => {
       {/* Sub Bills Viewer */}
       {viewingSubBills && (
         <SubBillsViewer
-          bill={viewingSubBills}
-          open={!!viewingSubBills}
+          sale={viewingSubBills}
           onClose={() => setViewingSubBills(null)}
         />
       )}

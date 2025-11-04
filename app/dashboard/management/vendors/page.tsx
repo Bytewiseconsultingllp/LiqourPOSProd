@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 import { Vendor } from '@/types/vendor';
 import { Plus, Edit2, Trash2, Search, Loader2, X } from 'lucide-react';
+import { Input } from '../../components/ui/input';
 
 export default function VendorManagementPage() {
   const router = useRouter();
@@ -304,7 +305,7 @@ export default function VendorManagementPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search vendors..."
                 value={searchTerm}
@@ -431,7 +432,7 @@ export default function VendorManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Vendor Name *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -442,7 +443,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">TIN *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.tin}
                       onChange={(e) => setFormData({ ...formData, tin: e.target.value })}
@@ -453,7 +454,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">CIN *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.cin}
                       onChange={(e) => setFormData({ ...formData, cin: e.target.value.toUpperCase() })}
@@ -464,7 +465,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Priority * (1 is highest)</label>
-                    <input
+                    <Input
                       type="number"
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 1 })}
@@ -476,7 +477,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">GSTIN</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.gstin}
                       onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
@@ -492,7 +493,7 @@ export default function VendorManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Contact Person</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.contactPerson}
                       onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
@@ -502,7 +503,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Email *</label>
-                    <input
+                    <Input
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -513,7 +514,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Phone *</label>
-                    <input
+                    <Input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -524,7 +525,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Address *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -535,7 +536,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">City</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
@@ -545,7 +546,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">State</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.state}
                       onChange={(e) => setFormData({ ...formData, state: e.target.value })}
@@ -555,7 +556,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Pincode</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.pincode}
                       onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
@@ -571,7 +572,7 @@ export default function VendorManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Account Name *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.accountName}
                       onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
@@ -582,7 +583,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Bank Name *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.bankName}
                       onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
@@ -593,7 +594,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Account Number *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.accountNumber}
                       onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
@@ -604,7 +605,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">IFSC Code *</label>
-                    <input
+                    <Input
                       type="text"
                       value={formData.ifscCode}
                       onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })}
@@ -615,7 +616,7 @@ export default function VendorManagementPage() {
                   </div>
                   <div className="flex items-center">
                     <label className="flex items-center gap-2">
-                      <input
+                      <Input
                         type="checkbox"
                         checked={formData.isActive}
                         onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}

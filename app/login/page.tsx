@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Input } from '../dashboard/components/ui/input';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -142,7 +143,7 @@ export default function LoginPage() {
               <label htmlFor="forgotEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email Address
               </label>
-              <input
+              <Input
                 type="email"
                 id="forgotEmail"
                 required
@@ -197,7 +198,7 @@ export default function LoginPage() {
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Email Address
             </label>
-            <input
+            <Input
               type="email"
               id="email"
               name="email"
@@ -213,7 +214,7 @@ export default function LoginPage() {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Password
             </label>
-            <input
+            <Input
               type="password"
               id="password"
               name="password"

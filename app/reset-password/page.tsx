@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Input } from '../dashboard/components/ui/input';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -109,7 +110,7 @@ function ResetPasswordContent() {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               New Password
             </label>
-            <input
+            <Input
               type="password"
               id="password"
               required
@@ -127,7 +128,7 @@ function ResetPasswordContent() {
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Confirm New Password
             </label>
-            <input
+            <Input
               type="password"
               id="confirmPassword"
               required

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, Search, Calendar, X, Tag } from 'lucide-react';
 import { IExpense, IExpenseCategory } from '@/models/Expense';
+import { Input } from '../components/ui/input';
 
 export default function ExpensesPage() {
   const router = useRouter();
@@ -316,7 +317,7 @@ export default function ExpensesPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="text"
               placeholder="Search expenses..."
               value={searchTerm}
@@ -338,7 +339,7 @@ export default function ExpensesPage() {
           </div>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -347,7 +348,7 @@ export default function ExpensesPage() {
           </div>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -438,12 +439,12 @@ export default function ExpensesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
-                  <input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  <Input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg" min="0" step="0.01" required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
-                  <input type="date" value={formData.expenseDate} onChange={(e) => setFormData({ ...formData, expenseDate: e.target.value })}
+                  <Input type="date" value={formData.expenseDate} onChange={(e) => setFormData({ ...formData, expenseDate: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg" required />
                 </div>
                 <div>
@@ -458,7 +459,7 @@ export default function ExpensesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Transaction ID</label>
-                  <input type="text" value={formData.transactionId} onChange={(e) => setFormData({ ...formData, transactionId: e.target.value })}
+                  <Input type="text" value={formData.transactionId} onChange={(e) => setFormData({ ...formData, transactionId: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div className="col-span-2">
@@ -499,7 +500,7 @@ export default function ExpensesPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category Name *</label>
-                  <input type="text" value={categoryFormData.name} onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                  <Input type="text" value={categoryFormData.name} onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg" required />
                 </div>
                 <div>

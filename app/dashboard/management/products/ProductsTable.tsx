@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ProductDetails, Barcode } from '@/types/product';
 import { Upload, Barcode as BarcodeIcon, Trash2, Edit, Image as ImageIcon, X, AlertCircle, Check, Eye } from 'lucide-react';
 import UniversalBarcodeScanner from '@/components/UniversalBarcodeScanner';
+import { Input } from '../../components/ui/input';
 
 interface ProductsTableProps {
   products: ProductDetails[];
@@ -352,7 +353,7 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
                 <span className="px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700">
                   Browse Files
                 </span>
-                <input
+                <Input
                   type="file"
                   className="hidden"
                   accept="image/jpeg,image/jpg,image/png,image/webp"

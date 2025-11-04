@@ -233,7 +233,7 @@
 //       <div className="mb-6 flex flex-col sm:flex-row gap-4">
 //         <div className="flex-1 relative">
 //           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-//           <input
+//           <Input
 //             type="text"
 //             placeholder="Search products by name, SKU, or brand..."
 //             value={searchTerm}
@@ -292,7 +292,7 @@
 //               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 //                 <div className="md:col-span-2">
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
-//                   <input
+//                   <Input
 //                     type="text"
 //                     required
 //                     value={formData.name}
@@ -313,7 +313,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">SKU</label>
-//                   <input
+//                   <Input
 //                     type="text"
 //                     value={formData.sku}
 //                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
@@ -323,7 +323,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Brand *</label>
-//                   <input
+//                   <Input
 //                     type="text"
 //                     required
 //                     value={formData.brand}
@@ -334,7 +334,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-//                   <input
+//                   <Input
 //                     type="text"
 //                     required
 //                     value={formData.category}
@@ -345,7 +345,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Volume (ML) *</label>
-//                   <input
+//                   <Input
 //                     type="number"
 //                     required
 //                     value={formData.volumeML}
@@ -356,7 +356,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Price Per Unit (₹) *</label>
-//                   <input
+//                   <Input
 //                     type="number"
 //                     step="0.01"
 //                     required
@@ -368,7 +368,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Current Stock *</label>
-//                   <input
+//                   <Input
 //                     type="number"
 //                     required
 //                     value={formData.currentStock}
@@ -379,7 +379,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Reorder Level</label>
-//                   <input
+//                   <Input
 //                     type="number"
 //                     value={formData.reorderLevel}
 //                     onChange={(e) => setFormData({ ...formData, reorderLevel: e.target.value })}
@@ -389,7 +389,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Bottles Per Caret</label>
-//                   <input
+//                   <Input
 //                     type="number"
 //                     value={formData.bottlesPerCaret}
 //                     onChange={(e) => setFormData({ ...formData, bottlesPerCaret: e.target.value })}
@@ -399,7 +399,7 @@
 
 //                 <div>
 //                   <label className="block text-sm font-medium text-gray-700 mb-2">Number of Carets</label>
-//                   <input
+//                   <Input
 //                     type="number"
 //                     value={formData.noOfCarets}
 //                     onChange={(e) => setFormData({ ...formData, noOfCarets: e.target.value })}
@@ -447,6 +447,7 @@ import { Plus, Search, Filter, AlertCircle, Printer, Upload, Download } from 'lu
 import { printStockSheet } from '@/lib/printStockSheet';
 import { downloadProductTemplate, parseProductExcel } from '@/lib/excelTemplates';
 import { toast } from 'sonner';
+import { Input } from '../../components/ui/input';
 
 export default function ProductsManagementPage() {
   const router = useRouter();
@@ -727,7 +728,7 @@ export default function ProductsManagementPage() {
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
+          <Input
             type="text"
             placeholder="Search products by name, SKU, or brand..."
             value={searchTerm}
@@ -820,7 +821,7 @@ export default function ProductsManagementPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
-                  <input
+                  <Input
                     type="text"
                     required
                     value={formData.name}
@@ -841,7 +842,7 @@ export default function ProductsManagementPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">SKU</label>
-                  <input
+                  <Input
                     type="text"
                     value={formData.sku}
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
@@ -851,7 +852,7 @@ export default function ProductsManagementPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Brand *</label>
-                  <input
+                  <Input
                     type="text"
                     required
                     value={formData.brand}
@@ -888,7 +889,7 @@ export default function ProductsManagementPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Volume (ML) *</label>
-                  <input
+                  <Input
                     type="number"
                     required
                     value={formData.volumeML}
@@ -899,7 +900,7 @@ export default function ProductsManagementPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Price Per Unit (₹) *</label>
-                  <input
+                  <Input
                     type="number"
                     step="0.01"
                     required
@@ -910,7 +911,7 @@ export default function ProductsManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">VAT%</label>
-                  <input
+                  <Input
                     type="number"
                     required
                     disabled
@@ -920,7 +921,7 @@ export default function ProductsManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">TCS%</label>
-                  <input
+                  <Input
                     type="number"
                     required
                     disabled
@@ -931,7 +932,7 @@ export default function ProductsManagementPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Current Stock *</label>
-                  <input
+                  <Input
                     type="number"
                     required
                     value={formData.currentStock}
@@ -942,7 +943,7 @@ export default function ProductsManagementPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Reorder Level</label>
-                  <input
+                  <Input
                     type="number"
                     value={formData.reorderLevel}
                     onChange={(e) => setFormData({ ...formData, reorderLevel: e.target.value })}
@@ -952,7 +953,7 @@ export default function ProductsManagementPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Bottles Per Caret</label>
-                  <input
+                  <Input
                     type="number"
                     value={formData.bottlesPerCaret}
                     onChange={(e) => setFormData({ ...formData, bottlesPerCaret: e.target.value })}
@@ -1015,7 +1016,7 @@ export default function ProductsManagementPage() {
                   Select Excel File
                 </label>
                 <div className="flex items-center gap-4">
-                  <input
+                  <Input
                     type="file"
                     accept=".xlsx,.xls"
                     onChange={handleBulkUpload}

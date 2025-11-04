@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Input } from '../dashboard/components/ui/input';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -118,7 +119,7 @@ export default function SignupPage() {
             <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Organization Name *
             </label>
-            <input
+            <Input
               type="text"
               id="organizationName"
               name="organizationName"
@@ -134,7 +135,7 @@ export default function SignupPage() {
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Email Address *
             </label>
-            <input
+            <Input
               type="email"
               id="email"
               name="email"
@@ -150,7 +151,7 @@ export default function SignupPage() {
             <label htmlFor="adminName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Admin Name *
             </label>
-            <input
+            <Input
               type="text"
               id="adminName"
               name="adminName"
@@ -166,7 +167,7 @@ export default function SignupPage() {
             <label htmlFor="subdomain" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Subdomain (Optional)
             </label>
-            <input
+            <Input
               type="text"
               id="subdomain"
               name="subdomain"
@@ -184,7 +185,7 @@ export default function SignupPage() {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Password *
             </label>
-            <input
+            <Input
               type="password"
               id="password"
               name="password"
@@ -203,7 +204,7 @@ export default function SignupPage() {
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Confirm Password *
             </label>
-            <input
+            <Input
               type="password"
               id="confirmPassword"
               name="confirmPassword"

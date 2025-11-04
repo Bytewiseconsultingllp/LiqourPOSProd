@@ -251,7 +251,7 @@ export default function VendorManagementPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
-              <input type="text" placeholder="Search by name, phone, or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+              <Input type="text" placeholder="Search by name, phone, or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
               <Truck className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 transform -translate-y-1/2"><X className="h-5 w-5 text-gray-400" /></button>}
             </div>
@@ -322,12 +322,12 @@ export default function VendorManagementPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vendor Name <span className="text-red-500">*</span></label>
-                      <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                      <Input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                       {formErrors.name && <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority (0-10)</label>
-                      <input type="number" name="vendorPriority" min="0" max="10" value={formData.vendorPriority} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                      <Input type="number" name="vendorPriority" min="0" max="10" value={formData.vendorPriority} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                       {formErrors.vendorPriority && <p className="text-sm text-red-500 mt-1">{formErrors.vendorPriority}</p>}
                     </div>
                   </div>
@@ -343,7 +343,7 @@ export default function VendorManagementPage() {
                     ].map((field) => (
                       <div key={field.name}>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{field.label} {field.required && <span className="text-red-500">*</span>}</label>
-                        <input type={field.type} name={field.name} value={(formData as any)[field.name]} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                        <Input type={field.type} name={field.name} value={(formData as any)[field.name]} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                         {formErrors[field.name] && <p className="text-sm text-red-500 mt-1">{formErrors[field.name]}</p>}
                       </div>
                     ))}
@@ -366,7 +366,7 @@ export default function VendorManagementPage() {
                     ].map((field) => (
                       <div key={field.name}>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{field.label} {field.required && <span className="text-red-500">*</span>}</label>
-                        <input type="text" name={field.name} value={(formData as any)[field.name]} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                        <Input type="text" name={field.name} value={(formData as any)[field.name]} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                         {formErrors[field.name] && <p className="text-sm text-red-500 mt-1">{formErrors[field.name]}</p>}
                       </div>
                     ))}
@@ -385,7 +385,7 @@ export default function VendorManagementPage() {
                     ].map((field) => (
                       <div key={field.name}>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{field.label} <span className="text-red-500">*</span></label>
-                        <input type="text" name={field.name} value={(formData as any)[field.name]} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                        <Input type="text" name={field.name} value={(formData as any)[field.name]} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                         {formErrors[field.name] && <p className="text-sm text-red-500 mt-1">{formErrors[field.name]}</p>}
                       </div>
                     ))}
@@ -398,7 +398,7 @@ export default function VendorManagementPage() {
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Terms</label>
-                      <input type="text" name="paymentTerms" placeholder="e.g., Net 30 days" value={formData.paymentTerms} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                      <Input type="text" name="paymentTerms" placeholder="e.g., Net 30 days" value={formData.paymentTerms} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>

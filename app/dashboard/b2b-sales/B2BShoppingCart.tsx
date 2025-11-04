@@ -59,15 +59,89 @@ export function B2BShoppingCart({
       setCashAmount(grandTotal);
       setOnlineAmount(0);
       setCreditAmount(0);
-    } else {
-      setCreditAmount(grandTotal);
+    } else if (paymentMethod === "credit") {
+      // In credit mode, initialize all to 0, then set credit to grandTotal
       setCashAmount(0);
       setOnlineAmount(0);
+      setCreditAmount(grandTotal);
     }
   }, [paymentMethod, grandTotal]);
 
   const handlePaymentMethodChange = (value: string) => {
     setPaymentMethod(value as "cash" | "credit");
+  };
+
+  const handleCashChange = (value: number) => {
+    const newCash = Math.max(0, value);
+    if (newCash > grandTotal) {
+      toast.error(`Cash amount cannot exceed total (₹${grandTotal.toFixed(2)})`);
+      return;
+    }
+    setCashAmount(newCash);
+    
+    if (paymentMethod === "cash") {
+      // Auto-adjust online to make up the difference
+      const remaining = grandTotal - newCash;
+      setOnlineAmount(Math.max(0, remaining));
+    }
+  };
+
+  const handleOnlineChange = (value: number) => {
+    const newOnline = Math.max(0, value);
+    const maxOnline = grandTotal - cashAmount;
+    
+    if (newOnline > maxOnline) {
+      toast.error(`Online amount cannot exceed ₹${maxOnline.toFixed(2)}`);
+      return;
+    }
+    setOnlineAmount(newOnline);
+  };
+
+  const handleCreditCashChange = (value: number) => {
+    const newCash = Math.max(0, value);
+    if (newCash > grandTotal) {
+      toast.error(`Cash amount cannot exceed total (₹${grandTotal.toFixed(2)})`);
+      return;
+    }
+    setCashAmount(newCash);
+    
+    // Auto-adjust credit and online
+    const remaining = grandTotal - newCash;
+    const newOnline = Math.min(onlineAmount, remaining);
+    setOnlineAmount(newOnline);
+    setCreditAmount(Math.max(0, remaining - newOnline));
+  };
+
+  const handleCreditOnlineChange = (value: number) => {
+    const newOnline = Math.max(0, value);
+    const maxOnline = grandTotal - cashAmount;
+    
+    if (newOnline > maxOnline) {
+      toast.error(`Online amount cannot exceed ₹${maxOnline.toFixed(2)}`);
+      return;
+    }
+    setOnlineAmount(newOnline);
+    
+    // Auto-adjust credit
+    const remaining = grandTotal - cashAmount - newOnline;
+    setCreditAmount(Math.max(0, remaining));
+  };
+
+  const handleCreditAmountChange = (value: number) => {
+    const newCredit = Math.max(0, value);
+    if (newCredit > availableCredit) {
+      toast.error(`Credit amount cannot exceed available credit (₹${availableCredit.toFixed(2)})`);
+      return;
+    }
+    if (newCredit > grandTotal) {
+      toast.error(`Credit amount cannot exceed total (₹${grandTotal.toFixed(2)})`);
+      return;
+    }
+    setCreditAmount(newCredit);
+    
+    // Auto-adjust cash
+    const remaining = grandTotal - newCredit - onlineAmount;
+    setCashAmount(Math.max(0, remaining));
   };
 
   const handleComplete = async () => {
@@ -83,7 +157,12 @@ export function B2BShoppingCart({
 
     const totalPaid = cashAmount + onlineAmount + creditAmount;
     if (Math.abs(totalPaid - grandTotal) > 0.01) {
-      toast.error("Payment amounts do not match the total");
+      toast.error(`Payment mismatch: Paid ₹${totalPaid.toFixed(2)}, Required ₹${grandTotal.toFixed(2)}`);
+      return;
+    }
+
+    if (creditAmount > availableCredit) {
+      toast.error(`Credit amount (₹${creditAmount.toFixed(2)}) exceeds available credit (₹${availableCredit.toFixed(2)})`);
       return;
     }
 
@@ -94,10 +173,15 @@ export function B2BShoppingCart({
 
     setIsProcessing(true);
     try {
-      // Map payment method to proper mode
-      const paymentMode = paymentMethod === 'cash' ? 'Cash' : 
-                         paymentMethod === 'credit' ? 'Credit' : 
-                         paymentMethod === 'online' ? 'Online' : 'Mixed';
+      // Determine payment mode based on actual amounts
+      let paymentMode = 'Mixed';
+      if (creditAmount > 0 && cashAmount === 0 && onlineAmount === 0) {
+        paymentMode = 'Credit';
+      } else if (cashAmount > 0 && onlineAmount === 0 && creditAmount === 0) {
+        paymentMode = 'Cash';
+      } else if (onlineAmount > 0 && cashAmount === 0 && creditAmount === 0) {
+        paymentMode = 'Online';
+      }
 
       const payment: B2BPayment = {
         mode: paymentMode,
@@ -197,7 +281,7 @@ export function B2BShoppingCart({
               <span>₹{vatAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>TCS (1.35%):</span>
+              <span>TCS (1%):</span>
               <span>₹{tcsAmount.toFixed(2)}</span>
             </div>
             <Separator />
@@ -222,7 +306,7 @@ export function B2BShoppingCart({
                   value="credit"
                   disabled={!customer || customer._id === "walk-in"}
                 >
-                  Credit
+                  Credit (Split Payment)
                 </TabsTrigger>
               </TabsList>
 
@@ -233,8 +317,9 @@ export function B2BShoppingCart({
                     id="cash"
                     type="number"
                     value={cashAmount}
-                    onChange={(e) => setCashAmount(Number(e.target.value))}
+                    onChange={(e) => handleCashChange(Number(e.target.value))}
                     min="0"
+                    max={grandTotal}
                     step="0.01"
                   />
                 </div>
@@ -244,8 +329,9 @@ export function B2BShoppingCart({
                     id="online"
                     type="number"
                     value={onlineAmount}
-                    onChange={(e) => setOnlineAmount(Number(e.target.value))}
+                    onChange={(e) => handleOnlineChange(Number(e.target.value))}
                     min="0"
+                    max={grandTotal - cashAmount}
                     step="0.01"
                   />
                 </div>
@@ -290,10 +376,36 @@ export function B2BShoppingCart({
                     </div>
 
                     {grandTotal > availableCredit && (
-                      <div className="bg-destructive/10 text-destructive p-3 rounded text-sm">
-                        Insufficient credit limit. Please use cash/online payment.
+                      <div className="bg-orange-100 text-orange-800 p-3 rounded text-sm">
+                        ⚠️ Total exceeds available credit. Use split payment below.
                       </div>
                     )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="credit-cash">Cash Amount</Label>
+                      <Input
+                        id="credit-cash"
+                        type="number"
+                        value={cashAmount}
+                        onChange={(e) => handleCreditCashChange(Number(e.target.value))}
+                        min="0"
+                        max={grandTotal}
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="credit-online">Online Amount</Label>
+                      <Input
+                        id="credit-online"
+                        type="number"
+                        value={onlineAmount}
+                        onChange={(e) => handleCreditOnlineChange(Number(e.target.value))}
+                        min="0"
+                        max={grandTotal - cashAmount}
+                        step="0.01"
+                      />
+                    </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="credit">Credit Amount</Label>
@@ -301,11 +413,36 @@ export function B2BShoppingCart({
                         id="credit"
                         type="number"
                         value={creditAmount}
-                        onChange={(e) => setCreditAmount(Number(e.target.value))}
+                        onChange={(e) => handleCreditAmountChange(Number(e.target.value))}
                         min="0"
+                        max={Math.min(availableCredit, grandTotal)}
                         step="0.01"
-                        disabled
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Max: ₹{Math.min(availableCredit, grandTotal).toFixed(2)}
+                      </p>
+                    </div>
+
+                    <div className="bg-blue-50 p-3 rounded space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>Cash:</span>
+                        <span className="font-semibold">₹{cashAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Online:</span>
+                        <span className="font-semibold">₹{onlineAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Credit:</span>
+                        <span className="font-semibold">₹{creditAmount.toFixed(2)}</span>
+                      </div>
+                      <Separator className="my-1" />
+                      <div className="flex justify-between text-sm font-bold">
+                        <span>Total:</span>
+                        <span className={cashAmount + onlineAmount + creditAmount === grandTotal ? "text-green-600" : "text-red-600"}>
+                          ₹{(cashAmount + onlineAmount + creditAmount).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                   </>
                 )}

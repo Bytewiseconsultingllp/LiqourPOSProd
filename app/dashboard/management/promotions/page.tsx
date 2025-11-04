@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Power, PowerOff } from 'lucide-react';
 import { Promotion } from '@/types/promotion';
 import { apiFetch } from '@/lib/api-client';
+import { Input } from '../../components/ui/input';
 
 export default function PromotionsPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -331,7 +332,7 @@ function PromotionModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Promotion Name *
               </label>
-              <input
+              <Input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -393,7 +394,7 @@ function PromotionModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Discount Percentage (%) *
                 </label>
-                <input
+                <Input
                   type="number"
                   min="0"
                   max="100"
@@ -412,7 +413,7 @@ function PromotionModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Discount Amount (₹) *
                 </label>
-                <input
+                <Input
                   type="number"
                   min="0"
                   value={formData.discountAmount}
@@ -431,7 +432,7 @@ function PromotionModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Buy Quantity *
                   </label>
-                  <input
+                  <Input
                     type="number"
                     min="1"
                     value={formData.buyQuantity}
@@ -446,7 +447,7 @@ function PromotionModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Get Quantity Free *
                   </label>
-                  <input
+                  <Input
                     type="number"
                     min="1"
                     value={formData.getQuantity}
@@ -465,7 +466,7 @@ function PromotionModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Min Purchase Amount (₹)
                 </label>
-                <input
+                <Input
                   type="number"
                   min="0"
                   value={formData.minPurchaseAmount}
@@ -479,7 +480,7 @@ function PromotionModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Max Discount Amount (₹)
                 </label>
-                <input
+                <Input
                   type="number"
                   min="0"
                   value={formData.maxDiscountAmount}
@@ -496,7 +497,7 @@ function PromotionModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Start Date *
                 </label>
-                <input
+                <Input
                   type="date"
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
@@ -508,7 +509,7 @@ function PromotionModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   End Date *
                 </label>
-                <input
+                <Input
                   type="date"
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
@@ -523,7 +524,7 @@ function PromotionModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Priority
                 </label>
-                <input
+                <Input
                   type="number"
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: Number(e.target.value) })}
@@ -533,7 +534,7 @@ function PromotionModal({
               </div>
               <div className="flex items-center">
                 <label className="flex items-center cursor-pointer">
-                  <input
+                  <Input
                     type="checkbox"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Edit, Trash2, TrendingUp, Package, X } from "lucide-react";
 import { Customer } from "@/types/customer";
+import { Input } from "../components/ui/input";
 
 export default function CustomerManagementPage() {
   const router = useRouter();
@@ -234,7 +235,7 @@ export default function CustomerManagementPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
-              <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white" />
+              <Input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white" />
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 transform -translate-y-1/2"><X className="h-5 w-5 text-gray-400" /></button>}
             </div>
@@ -305,7 +306,7 @@ export default function CustomerManagementPage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {field.label} {field.required && <span className="text-red-500">*</span>}
                     </label>
-                    <input type={field.type} name={field.name} value={(formData as any)[field.name]} onChange={handleChange} min={field.min} max={field.max} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white" />
+                    <Input type={field.type} name={field.name} value={(formData as any)[field.name]} onChange={handleChange} min={field.min} max={field.max} className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white" />
                     {formErrors[field.name] && <p className="text-sm text-red-500 mt-1">{formErrors[field.name]}</p>}
                   </div>
                 ))}
