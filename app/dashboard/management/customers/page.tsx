@@ -14,7 +14,7 @@ export default function CustomerManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     type: 'Retail' as 'Retail' | 'Wholesale' | 'Walk-In' | 'B2B',
@@ -50,7 +50,7 @@ export default function CustomerManagementPage() {
       setLoading(true);
       const token = localStorage.getItem('accessToken');
       const organizationData = localStorage.getItem('organization');
-      
+
       if (!token || !organizationData) {
         return;
       }
@@ -127,7 +127,7 @@ export default function CustomerManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.phone) {
       showToast('Name and Phone are required', 'error');
       return;
@@ -137,7 +137,7 @@ export default function CustomerManagementPage() {
     try {
       const token = localStorage.getItem('accessToken');
       const organizationData = localStorage.getItem('organization');
-      
+
       if (!token || !organizationData) {
         showToast('Please login again', 'error');
         router.push('/login');
@@ -147,10 +147,10 @@ export default function CustomerManagementPage() {
       const organization = JSON.parse(organizationData);
       const orgId = organization._id || organization.id;
 
-      const url = editingCustomer 
+      const url = editingCustomer
         ? `/api/customers/${editingCustomer._id}`
         : '/api/customers';
-      
+
       const method = editingCustomer ? 'PUT' : 'POST';
 
       console.log(`${method} ${url}`, {
@@ -175,7 +175,7 @@ export default function CustomerManagementPage() {
           },
           creditLimit: formData.creditLimit,
           openingBalance: formData.openingBalance,
-          outstandingBalance:formData.openingBalance,
+          outstandingBalance: formData.openingBalance,
           maxDiscountPercentage: formData.maxDiscountPercentage,
           isActive: formData.isActive,
         }),
@@ -192,7 +192,7 @@ export default function CustomerManagementPage() {
         editingCustomer ? 'Customer updated successfully!' : 'Customer created successfully!',
         'success'
       );
-      
+
       handleCloseModal();
       fetchCustomers();
     } catch (error: any) {
@@ -208,11 +208,12 @@ export default function CustomerManagementPage() {
       return;
     }
 
+
     setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
       const organizationData = localStorage.getItem('organization');
-      
+
       if (!token || !organizationData) {
         showToast('Please login again', 'error');
         router.push('/login');
@@ -246,7 +247,7 @@ export default function CustomerManagementPage() {
   };
 
   const filteredCustomers = customers
-    .filter(customer => 
+    .filter(customer =>
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.contactInfo?.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.contactInfo?.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -256,9 +257,8 @@ export default function CustomerManagementPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 pt-20">
       {toast && (
-        <div className={`fixed top-20 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${
-          toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-        } text-white`}>
+        <div className={`fixed top-20 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+          } text-white`}>
           {toast.message}
         </div>
       )}
@@ -333,12 +333,11 @@ export default function CustomerManagementPage() {
                         <div className="font-medium">{customer.name}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          customer.type === 'B2B' ? 'bg-purple-100 text-purple-800' :
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${customer.type === 'B2B' ? 'bg-purple-100 text-purple-800' :
                           customer.type === 'Wholesale' ? 'bg-yellow-100 text-yellow-800' :
-                          customer.type === 'Walk-In' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                            customer.type === 'Walk-In' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                          }`}>
                           {customer.type || 'RETAIL'}
                         </span>
                       </td>
@@ -364,9 +363,8 @@ export default function CustomerManagementPage() {
                         {customer.createdAt?.split('T')[0] || 0}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          customer.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${customer.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
                           {customer.isActive !== false ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -379,8 +377,15 @@ export default function CustomerManagementPage() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
+                            disabled={(customer.outstandingBalance || 0) > 0}
+                            title={(customer.outstandingBalance ?? 0) > 0 ? 'Cannot delete: outstanding balance exists' : 'Delete'}
                             onClick={() => handleDelete(customer)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            aria-disabled={(customer.outstandingBalance || 0) > 0}
+                            className={`p-2 rounded-lg ${
+                              (customer.outstandingBalance || 0) > 0
+                                ? 'text-gray-400 opacity-50 cursor-not-allowed'
+                                : 'text-red-600 hover:bg-red-50'
+                            }`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

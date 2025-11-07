@@ -306,8 +306,9 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
                     </button>
                     <button
                       onClick={() => onDelete(product._id)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Delete"
+                      className={`text-red-600 hover:text-red-900 disabled:text-gray-400 disabled:hover:text-gray-400`}
+                      title={product.currentStock > 0 ? 'Cannot delete: product has stock' : 'Delete'}
+                      disabled={product.currentStock > 0}
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>

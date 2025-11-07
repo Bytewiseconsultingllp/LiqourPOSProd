@@ -15,6 +15,7 @@ export default function VendorManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [vendorStockMap, setVendorStockMap] = useState<Record<string, boolean>>({});
 
   const [formData, setFormData] = useState({
     name: '',
@@ -70,7 +71,27 @@ export default function VendorManagementPage() {
 
       const data = await response.json();
       if (data.success) {
-        setVendors(data.data || []);
+        const list: Vendor[] = data.data || [];
+        setVendors(list);
+        // Fetch has-stock for each vendor in parallel
+        const stockPairs = await Promise.all(
+          list.map(async (v) => {
+            if (!v._id) return [undefined, false] as const;
+            try {
+              const r = await apiFetch(`/api/vendors/${v._id}/has-stock`);
+              if (!r.ok) return [v._id, false] as const;
+              const j = await r.json();
+              return [v._id, !!j?.data?.hasStock] as const;
+            } catch {
+              return [v._id, false] as const;
+            }
+          })
+        );
+        const map: Record<string, boolean> = {};
+        stockPairs.forEach(([id, has]) => {
+          if (id) map[id] = has;
+        });
+        setVendorStockMap(map);
       }
     } catch (error: any) {
       showToast(error.message || 'Failed to fetch vendors', 'error');
@@ -382,7 +403,9 @@ export default function VendorManagementPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(vendor)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            className={`p-2 rounded-lg ${vendorStockMap[vendor._id!] ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:bg-red-50'}`}
+                            title={vendorStockMap[vendor._id!] ? 'Cannot delete: vendor has stock' : 'Delete'}
+                            disabled={!!vendorStockMap[vendor._id!]}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
