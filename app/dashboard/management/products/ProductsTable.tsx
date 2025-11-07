@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { ProductDetails, Barcode } from '@/types/product';
-import { Upload, Barcode as BarcodeIcon, Trash2, Edit, Image as ImageIcon, X, AlertCircle, Check, Eye } from 'lucide-react';
 import UniversalBarcodeScanner from '@/components/UniversalBarcodeScanner';
+import { ProductDetails } from '@/types/product';
+import { AlertCircle, Barcode as BarcodeIcon, Edit, Eye, Image as ImageIcon, Trash2, Upload, X } from 'lucide-react';
+import { useState } from 'react';
 import { Input } from '../../components/ui/input';
 
 interface ProductsTableProps {
@@ -21,6 +21,8 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [viewBarcode, setViewBarcode] = useState<string | null>(null);
+
 
   const handleImageUpload = (product: ProductDetails) => {
     setSelectedProduct(product);
@@ -44,7 +46,7 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
       const accessToken = localStorage.getItem('accessToken');
       const organization = localStorage.getItem('organization');
       const tenantId = organization ? JSON.parse(organization).id : 'default';
-      
+
       const response = await fetch(`/api/products/${selectedProduct._id}/barcodes`, {
         method: 'POST',
         headers: {
@@ -75,12 +77,12 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
       const accessToken = localStorage.getItem('accessToken');
       const organization = localStorage.getItem('organization');
       const tenantId = organization ? JSON.parse(organization).id : 'default';
-      
+
       const response = await fetch(
         `/api/products/${selectedProduct._id}/barcodes?code=${encodeURIComponent(barcodeCode)}`,
         {
           method: 'DELETE',
-          headers: { 
+          headers: {
             'Authorization': `Bearer ${accessToken}`,
             'x-tenant-id': tenantId,
           },
@@ -92,7 +94,9 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
         throw new Error(data.error || 'Failed to delete barcode');
       }
 
+      setShowBarcodeManager(false)
       onRefresh();
+
     } catch (err: any) {
       setError(err.message);
     }
@@ -137,10 +141,10 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
       const accessToken = localStorage.getItem('accessToken');
       const organization = localStorage.getItem('organization');
       const tenantId = organization ? JSON.parse(organization).id : 'default';
-      
+
       const response = await fetch(`/api/products/${selectedProduct._id}/image`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${accessToken}`,
           'x-tenant-id': tenantId,
         },
@@ -207,9 +211,15 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
               <tr key={product._id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="relative w-16 h-16">
-                    {product.imageUrl ? (
+                    {(product as any).imageBase64 && (product as any).imageMimeType ? (
                       <img
-                        src={product.imageUrl}
+                        src={`data:${(product as any).imageMimeType};base64,${(product as any).imageBase64}`}
+                        alt={product.name}
+                        className="w-full h-full object-cover rounded"
+                      />
+                    ) : product.imageUrl ? (
+                      <img
+                        src={`data:${(product as any).imageMimeType};base64,${(product as any).imageUrl}`}
                         alt={product.name}
                         className="w-full h-full object-cover rounded"
                       />
@@ -337,9 +347,8 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
             )}
 
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-              }`}
+              className={`border-2 border-dashed rounded-lg p-8 text-center ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -447,7 +456,14 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
                             minute: '2-digit',
                           })}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => setViewBarcode(barcode.code)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="View Barcode"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
                           <button
                             onClick={() => handleDeleteBarcode(barcode.code)}
                             className="text-red-600 hover:text-red-900"
@@ -456,6 +472,7 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
                             <Trash2 className="w-5 h-5" />
                           </button>
                         </td>
+
                       </tr>
                     ))}
                   </tbody>
@@ -467,9 +484,38 @@ export default function ProductsTable({ products, onEdit, onDelete, onRefresh }:
                 </div>
               )}
             </div>
+
+
           </div>
         </div>
       )}
+      {/* Barcode Image Preview Modal */}
+      {viewBarcode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center">
+            <h3 className="text-lg font-semibold mb-3 text-gray-800">
+              Barcode Preview
+            </h3>
+
+            <img
+              src={`https://barcodeapi.org/api/128/${encodeURIComponent(viewBarcode)}`}
+              alt="Barcode"
+              className="mx-auto max-h-40 border border-gray-300 rounded-lg object-contain p-2"
+            />
+            <p className="mt-3 text-sm text-gray-600 font-mono">{viewBarcode}</p>
+
+            <div className="mt-4">
+              <button
+                onClick={() => setViewBarcode(null)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 }

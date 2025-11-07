@@ -45,6 +45,41 @@ export default function SalesManagementPage() {
     }
   };
 
+  // Helpers to update payment fields
+  const setPaymentField = (field: string, value: any) => {
+    setEditFormData((prev: any) => ({
+      ...prev,
+      payment: {
+        ...(prev.payment || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handlePaymentModeChange = (mode: 'Cash' | 'Online' | 'Credit' | 'Mixed') => {
+    // If switching to single mode, auto-distribute total to that field and zero others
+    const total = Number(editFormData.totalAmount) || 0;
+    if (mode === 'Cash') {
+      setEditFormData((prev: any) => ({
+        ...prev,
+        payment: { mode, cashAmount: total, onlineAmount: 0, creditAmount: 0 },
+      }));
+    } else if (mode === 'Online') {
+      setEditFormData((prev: any) => ({
+        ...prev,
+        payment: { mode, cashAmount: 0, onlineAmount: total, creditAmount: 0 },
+      }));
+    } else if (mode === 'Credit') {
+      setEditFormData((prev: any) => ({
+        ...prev,
+        payment: { mode, cashAmount: 0, onlineAmount: 0, creditAmount: total },
+      }));
+    } else {
+      // Mixed: preserve current values
+      setPaymentField('mode', mode);
+    }
+  };
+
   const fetchBills = async (token: string) => {
     try {
       setLoading(true);
@@ -94,7 +129,12 @@ export default function SalesManagementPage() {
       customerPhone: bill.customerPhone || '',
       customerType: bill.customerType,
       customerId: bill.customerId,
-      payment: bill.payment,
+      payment: {
+        mode: bill.payment?.mode || 'Cash',
+        cashAmount: bill.payment?.cashAmount ?? bill.payment?.cashAmount ?? 0,
+        onlineAmount: bill.payment?.onlineAmount ?? bill.payment?.onlineAmount ?? 0,
+        creditAmount: bill.payment?.creditAmount ?? bill.payment?.creditAmount ?? 0,
+      },
       subBills: bill.subBills || [],
       promotionDiscount: bill.promotionDiscountAmount || 0,
       additionalDiscount: bill.billDiscountAmount || 0,
@@ -583,7 +623,7 @@ export default function SalesManagementPage() {
                     Customer Phone
                   </label>
                   <Input
-                  disabled
+                    disabled
                     type="text"
                     value={editFormData.customerPhone}
                     onChange={(e) =>
@@ -716,6 +756,99 @@ export default function SalesManagementPage() {
                 </div>
               </div>
 
+              {/* PAYMENT DETAILS */}
+              {(() => {
+                const total = Number(editFormData.totalAmount) || 0;
+                const customerSaved = Boolean(editFormData.customerId);
+                const p = editFormData.payment || {};
+                const cash = Number(p.cashAmount ?? 0);
+                const online = Number(p.onlineAmount ?? 0);
+                const credit = Number(p.creditAmount ?? 0);
+                const sum = Number((cash + online + credit).toFixed(2));
+                const mode: 'Cash' | 'Online' | 'Credit' = p.mode || 'Cash';
+                const sumMatches = mode === 'Credit' ? sum === total :
+                  mode === 'Cash' ? cash === total :
+                    mode === 'Online' ? online === total : true
+
+                const creditAllowed = customerSaved; // only saved customers can use credit
+
+                // expose validation on the component for disabling submit
+                (window as any).__paymentSumValid = sumMatches && (mode !== 'Credit' || creditAllowed);
+
+                return (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-3">Payment</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Mode</label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          value={mode}
+                          onChange={(e) => handlePaymentModeChange(e.target.value as any)}
+                        >
+                          <option value="Cash">Cash</option>
+                          <option value="Online">Online</option>
+                          <option value="Credit" disabled={!creditAllowed}>Credit {creditAllowed ? '' : '(saved customer only)'}
+                          </option>
+                        </select>
+                        {!creditAllowed && mode === 'Credit' && (
+                          <p className="text-xs text-red-600 mt-1">Credit is only allowed for saved customers.</p>
+                        )}
+                      </div>
+                      {(mode === 'Cash' || mode === 'Credit') && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Cash (₹)</label>
+                          <Input
+                            type="number"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right"
+                            min={0}
+                            step="0.01"
+                            value={cash}
+                            onChange={(e) => setPaymentField('cashAmount', parseFloat(e.target.value || '0'))}
+                          />
+                        </div>
+                      )}
+                      {(mode === 'Online' || mode === 'Credit') && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Online (₹)</label>
+                          <Input
+                            type="number"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right"
+                            min={0}
+                            step="0.01"
+                            value={online}
+                            onChange={(e) => setPaymentField('onlineAmount', parseFloat(e.target.value || '0'))}
+                          />
+                        </div>
+                      )}
+                      {(mode === 'Credit') && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Credit (₹)</label>
+                          <Input
+                            type="number"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right"
+                            min={0}
+                            step="0.01"
+                            value={credit}
+                            onChange={(e) => setPaymentField('creditAmount', parseFloat(e.target.value || '0'))}
+                            disabled={!creditAllowed}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-2 text-sm">
+                      <span className="text-gray-600">Sum:</span>
+                      <span className={`ml-2 font-semibold ${sumMatches ? 'text-green-700' : 'text-red-600'}`}>₹{sum.toFixed(2)}</span>
+                      <span className="ml-3 text-gray-600">/ Total:</span>
+                      <span className="ml-2 font-semibold">₹{total.toFixed(2)}</span>
+                      {!sumMatches && (
+                        <span className="ml-3 text-red-600">(Amounts do not match total)</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* TOTALS */}
               {(() => {
                 const subTotal = Number(editFormData.subTotalAmount) || 0;
@@ -780,7 +913,7 @@ export default function SalesManagementPage() {
                 <button
                   type="submit"
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-                  disabled={submitting}
+                  disabled={submitting || (typeof (window as any).__paymentSumValid !== 'undefined' && !(window as any).__paymentSumValid)}
                 >
                   {submitting ? "Updating..." : "Update Bill"}
                 </button>

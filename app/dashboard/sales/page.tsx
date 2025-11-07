@@ -508,7 +508,6 @@ const Index = () => {
     // Find product by SKU or barcode
     const product = products.find(
       p => p.sku?.toLowerCase() === barcode.toLowerCase() ||
-        p.barcode?.toLowerCase() === barcode.toLowerCase() ||
         p._id === barcode
     );
 
@@ -768,13 +767,107 @@ const Index = () => {
       </div>
 
       {/* Recent Sales Table (Unchanged) */}
-      <div className="mt-8">
-        <Card className="p-4 md:p-6">
-          <h2 className="text-xl md:text-2xl font-bold mb-4">Recent Sales</h2>
-          {/* ... your existing table code ... */}
-        </Card>
+     <div className="mt-8">
+          <Card className="p-6">
+            <h2 className="text-2xl font-bold mb-4">Recent Sales</h2>
+            {salesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : recentSales.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No recent sales
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Bill ID</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Customer</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Items</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Quantity</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Volume</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold">Total Amount</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Payment</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {recentSales.map((sale) => (
+                      <tr key={sale._id} className="hover:bg-muted/50">
+                        <td className="px-4 py-3 text-sm font-medium">{sale.totalBillId}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <div className="font-medium">{sale.customerName}</div>
+                            {sale.customerPhone && (
+                              <div className="text-xs text-muted-foreground">{sale.customerPhone}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{sale.items?.length || 0}</td>
+                        <td className="px-4 py-3 text-sm">{sale.totalQuantityBottles}</td>
+                        <td className="px-4 py-3 text-sm">{(sale.totalVolumeML / 1000).toFixed(2)}L</td>
+                        <td className="px-4 py-3 text-sm text-right font-semibold">₹{sale.totalAmount?.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${sale.payment?.mode === 'Cash' ? 'bg-green-100 text-green-800' :
+                            sale.payment?.mode === 'Online' ? 'bg-blue-100 text-blue-800' :
+                              sale.payment?.mode === 'Credit' ? 'bg-orange-100 text-orange-800' :
+                                'bg-gray-100 text-gray-800'
+                            }`}>
+                            {sale.payment?.mode || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {new Date(sale.saleDate || sale.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              onClick={() => handleViewBill(sale, 'main')}
+                              title="View Main Bill"
+                            >
+                              <Eye className="h-3 w-3" />
+                              Bill
+                            </Button>
+                            {sale.subBills && sale.subBills.length > 0 ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1 bg-blue-50 border-blue-200 hover:bg-blue-100"
+                                onClick={() => handleViewSubBills(sale)}
+                                title={`View ${sale.subBills.length} Sub-Bills`}
+                              >
+                                <Layers className="h-3 w-3" />
+                                {sale.subBills.length} Sub
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1"
+                                onClick={() => handleViewBill(sale, 'sub')}
+                                title="View Sub Bill"
+                              >
+                                <FileText className="h-3 w-3" />
+                                Sub
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
-    </div>
 
     {/* Dialogs */}
     <QuantityDialog

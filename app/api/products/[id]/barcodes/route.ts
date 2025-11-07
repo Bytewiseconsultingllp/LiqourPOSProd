@@ -3,8 +3,12 @@ import { z } from 'zod';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { registerAllModels } from '@/lib/model-registry';
 
-const barcodeSchema = z.object({
-  code: z.string().min(1, 'Barcode is required'),
+const singleBarcodeSchema = z.object({
+  code: z.string().min(1, 'Barcode code is required'),
+});
+
+const multipleBarcodeSchema = z.object({
+  barcodes: z.array(z.string().min(1, 'Barcode cannot be empty')).min(1, 'At least one barcode is required'),
 });
 
 /**
@@ -19,7 +23,7 @@ function getUserFromToken(request: NextRequest): any {
   const token = authHeader.substring(7);
   const { verifyAccessToken } = require('@/lib/auth');
   const payload = verifyAccessToken(token);
-  
+
   if (!payload) {
     throw new Error('Invalid token');
   }
@@ -28,7 +32,8 @@ function getUserFromToken(request: NextRequest): any {
 }
 
 /**
- * POST /api/products/[id]/barcodes - Add a new barcode to product
+ * ✅ POST /api/products/[id]/barcodes
+ * Handles adding one or multiple barcodes to a product
  */
 export async function POST(
   request: NextRequest,
@@ -38,19 +43,38 @@ export async function POST(
     const user = getUserFromToken(request);
     const body = await request.json();
 
-    // Validate input
-    const validation = barcodeSchema.safeParse(body);
-    if (!validation.success) {
+    // Determine if input is single or multiple
+    let barcodes: string[] = [];
+
+    if ('barcodes' in body) {
+      const validation = multipleBarcodeSchema.safeParse(body);
+      if (!validation.success) {
+        return NextResponse.json(
+          { error: validation.error.errors[0].message },
+          { status: 400 }
+        );
+      }
+      barcodes = validation.data.barcodes;
+    } else if ('code' in body) {
+      const validation = singleBarcodeSchema.safeParse(body);
+      if (!validation.success) {
+        return NextResponse.json(
+          { error: validation.error.errors[0].message },
+          { status: 400 }
+        );
+      }
+      barcodes = [validation.data.code];
+    } else {
       return NextResponse.json(
-        { error: validation.error.errors[0].message },
+        { error: 'Invalid request: must include either "code" or "barcodes" field' },
         { status: 400 }
       );
     }
 
-    // Register all models first
+    // Register all models
     registerAllModels();
 
-    // Get tenant connection
+    // Tenant connection
     const tenantConnection = await getTenantConnection(user.organizationId);
     const ProductDetails = getTenantModel(tenantConnection, 'Product');
 
@@ -61,51 +85,57 @@ export async function POST(
     });
 
     if (!product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
-
-    // Check if barcode already exists for this product
-    const barcodeExists = product.barcodes?.some(
-      (b: any) => b.code === validation.data.code
-    );
-
-    if (barcodeExists) {
-      return NextResponse.json(
-        { error: 'This barcode already exists for this product' },
-        { status: 409 }
-      );
-    }
-
-    // Add new barcode
-    const newBarcode = {
-      code: validation.data.code,
-      createdAt: new Date(),
-      createdBy: user.userId,
-    };
 
     product.barcodes = product.barcodes || [];
-    product.barcodes.push(newBarcode);
-    await product.save();
 
-    console.log(`✅ Barcode added to product: ${product.name}`);
+    const existingCodes = new Set(product.barcodes.map((b: any) => b.code));
+    const newBarcodes = [];
+    const skippedBarcodes = [];
+
+    for (const code of barcodes) {
+      if (existingCodes.has(code)) {
+        skippedBarcodes.push(code);
+        continue;
+      }
+
+      const barcodeEntry = {
+        code,
+        createdAt: new Date(),
+        createdBy: user.userId,
+      };
+      product.barcodes.push(barcodeEntry);
+      newBarcodes.push(barcodeEntry);
+    }
+
+    if (newBarcodes.length > 0) {
+      await product.save();
+    }
+
+    console.log(
+      `✅ Added ${newBarcodes.length} new barcode(s) to product: ${product.name}`
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'Barcode added successfully',
-      data: newBarcode,
+      message: 'Barcodes processed successfully',
+      data: {
+        added: newBarcodes,
+        skipped: skippedBarcodes,
+        totalAdded: newBarcodes.length,
+        totalSkipped: skippedBarcodes.length,
+      },
     });
   } catch (error: any) {
-    console.error('Error adding barcode:', error);
-    
+    console.error('Error adding barcodes:', error);
+
     if (error.message.includes('token') || error.message.includes('authorization')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     return NextResponse.json(
-      { error: error.message || 'Failed to add barcode' },
+      { error: error.message || 'Failed to add barcodes' },
       { status: 500 }
     );
   }

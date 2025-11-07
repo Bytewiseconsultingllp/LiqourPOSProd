@@ -114,6 +114,16 @@ const ProductDetailsSchema = new Schema(
       type: String,
       trim: true,
     },
+    barcodes: {
+      type: [
+        {
+          code: { type: String, required: true },
+          createdAt: { type: Date, default: Date.now },
+          createdBy: { type: String },
+        },
+      ],
+      default: [],
+    },
     brand: {
       type: String,
       required: true,
@@ -209,6 +219,7 @@ const ProductDetailsSchema = new Schema(
 // Indexes for ProductDetails
 ProductDetailsSchema.index({ organizationId: 1, sku: 1 });
 ProductDetailsSchema.index({ organizationId: 1, barcode: 1 }, { sparse: true });
+ProductDetailsSchema.index({ organizationId: 1, 'barcodes.code': 1 }, { sparse: true });
 ProductDetailsSchema.index({ organizationId: 1, category: 1 });
 ProductDetailsSchema.index({ organizationId: 1, brand: 1 });
 ProductDetailsSchema.index({ organizationId: 1, name: 1 });

@@ -21,7 +21,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
     >
       <div className="aspect-square bg-muted relative overflow-hidden">
         <img
-          src={product.imageUrl}
+          src={`data:${(product as any).imageMimeType};base64,${(product as any).imageUrl}`}
           alt={product.name}
           className="w-full h-full object-cover"
         />

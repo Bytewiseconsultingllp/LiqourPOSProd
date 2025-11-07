@@ -10,7 +10,9 @@ export interface IProductDetails {
   _id: string;
   name: string;
   description?: string;
-  imageUrl?: string;
+  imageUrl?: string; // Deprecated - kept for backward compatibility
+  imageBase64?: string; // New: Base64 encoded image
+  imageMimeType?: string; // MIME type of the image (e.g., image/jpeg)
   sku?: string;
   barcode?: string; // Deprecated - kept for backward compatibility
   barcodes?: IBarcode[]; // New: Multiple barcodes support
@@ -72,6 +74,13 @@ const ProductDetailsSchema = new Schema<IProductDetails>(
       trim: true,
     },
     imageUrl: {
+      type: String,
+      trim: true,
+    },
+    imageBase64: {
+      type: String,
+    },
+    imageMimeType: {
       type: String,
       trim: true,
     },

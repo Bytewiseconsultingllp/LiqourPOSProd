@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { getPrintSettings, getPrintSettingsSync } from '@/lib/print-settings';
+import { BillFieldSettings } from '@/types/print-settings';
 
 interface SubBill {
   items: any[];
@@ -31,10 +33,22 @@ interface BatchPrintSubBillsProps {
 
 export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const [settings, setSettings] = useState<BillFieldSettings | null>(null);
+
+  // Load print settings
+  useEffect(() => {
+    const printSettings = getPrintSettingsSync();
+    setSettings(printSettings.subBill);
+  }, []);
 
   // Safety check
   if (!sale.subBills || sale.subBills.length === 0) {
     onClose();
+    return null;
+  }
+
+  // Don't render until settings are loaded
+  if (!settings) {
     return null;
   }
 
@@ -226,40 +240,48 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, on
       <div key={index} className="sub-bill">
         {/* Header */}
         <div className="header">
-          <div className="org-name">{orgInfo.name}</div>
-          {orgInfo.address && <div className="org-details">{orgInfo.address}</div>}
-          {orgInfo.phone && <div className="org-details">Ph: {orgInfo.phone}</div>}
-          {orgInfo.gstin && <div className="org-details">GSTIN: {orgInfo.gstin}</div>}
+          {settings!.organizationName && <div className="org-name">{orgInfo.name}</div>}
+          {settings!.organizationAddress && orgInfo.address && <div className="org-details">{orgInfo.address}</div>}
+          {settings!.organizationPhone && orgInfo.phone && <div className="org-details">Ph: {orgInfo.phone}</div>}
+          {settings!.organizationGSTIN && orgInfo.gstin && <div className="org-details">GSTIN: {orgInfo.gstin}</div>}
           <div className="bill-type">--- SUB BILL {index + 1} ---</div>
         </div>
 
         {/* Bill Info */}
         <div className="section">
-          <div className="row">
-            <span className="label">Bill No:</span>
-            <span>{sale.totalBillId}</span>
-          </div>
-          <div className="row">
-            <span className="label">Sub Bill:</span>
-            <span>{sale.totalBillId}-SUB{index + 1}</span>
-          </div>
-          <div className="row">
-            <span className="label">Date:</span>
-            <span>
-              {new Date(sale.saleDate || sale.createdAt || new Date()).toLocaleString('en-IN', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
-          </div>
-          <div className="row">
-            <span className="label">Customer:</span>
-            <span>{sale.customerName}</span>
-          </div>
-          {sale.customerPhone && (
+          {settings!.billNumber && (
+            <div className="row">
+              <span className="label">Bill No:</span>
+              <span>{sale.totalBillId}</span>
+            </div>
+          )}
+          {settings!.subBillNumber && (
+            <div className="row">
+              <span className="label">Sub Bill:</span>
+              <span>{sale.totalBillId}-SUB{index + 1}</span>
+            </div>
+          )}
+          {settings!.date && (
+            <div className="row">
+              <span className="label">Date:</span>
+              <span>
+                {new Date(sale.saleDate || sale.createdAt || new Date()).toLocaleString('en-IN', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+          )}
+          {settings!.customerName && (
+            <div className="row">
+              <span className="label">Customer:</span>
+              <span>{sale.customerName}</span>
+            </div>
+          )}
+          {settings!.customerPhone && sale.customerPhone && (
             <div className="row">
               <span className="label">Phone:</span>
               <span>{sale.customerPhone}</span>
@@ -271,18 +293,23 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, on
         <div className="items-table">
           {subBill.items.map((item, itemIndex) => (
             <div key={itemIndex} className="item-row">
-              <div className="item-name">
-                {item.productName}
-                {item.brand && ` - ${item.brand}`}
-              </div>
+              {settings!.productName && (
+                <div className="item-name">
+                  {item.productName}
+                  {settings!.brand && item.brand && ` - ${item.brand}`}
+                </div>
+              )}
               <div className="item-details">
                 <span>
-                  {item.quantity} x ₹{item.rate.toFixed(2)}
-                  {item.volumePerUnitML && ` (${item.volumePerUnitML}ml)`}
+                  {settings!.quantity && `${item.quantity} x `}
+                  {settings!.rate && `₹${item.rate.toFixed(2)}`}
+                  {settings!.volume && item.volumePerUnitML && ` (${item.volumePerUnitML}ml)`}
                 </span>
-                <span>₹{(item.rate * item.quantity).toFixed(2)}</span>
+                {settings!.itemSubtotal && (
+                  <span>₹{(item.rate * item.quantity).toFixed(2)}</span>
+                )}
               </div>
-              {item.discountAmount && item.discountAmount > 0 && (
+              {settings!.itemDiscount && item.discountAmount && item.discountAmount > 0 && (
                 <div className="item-details" style={{ fontSize: '10px', color: '#666' }}>
                   <span>Discount</span>
                   <span>-₹{item.discountAmount.toFixed(2)}</span>
@@ -293,72 +320,88 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, on
         </div>
 
         {/* Summary */}
-        <div className="section">
-          <div className="row">
-            <span>Total Items:</span>
-            <span>{subBill.items.length}</span>
+        {(settings!.totalItems || settings!.totalQuantity || settings!.totalVolume) && (
+          <div className="section">
+            {settings!.totalItems && (
+              <div className="row">
+                <span>Total Items:</span>
+                <span>{subBill.items.length}</span>
+              </div>
+            )}
+            {settings!.totalQuantity && (
+              <div className="row">
+                <span>Total Quantity:</span>
+                <span>{totalQuantity} bottles</span>
+              </div>
+            )}
+            {settings!.totalVolume && totalVolume > 0 && (
+              <div className="row">
+                <span>Total Volume:</span>
+                <span>{(totalVolume / 1000).toFixed(2)}L</span>
+              </div>
+            )}
           </div>
-          <div className="row">
-            <span>Total Quantity:</span>
-            <span>{totalQuantity} bottles</span>
-          </div>
-          {totalVolume > 0 && (
-            <div className="row">
-              <span>Total Volume:</span>
-              <span>{(totalVolume / 1000).toFixed(2)}L</span>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Totals */}
         <div className="totals">
-          <div className="total-row">
-            <span>Subtotal:</span>
-            <span>₹{subBill.subTotalAmount.toFixed(2)}</span>
-          </div>
-          {subBill.totalDiscountAmount > 0 && (
+          {settings!.subtotal && (
+            <div className="total-row">
+              <span>Subtotal:</span>
+              <span>₹{subBill.subTotalAmount.toFixed(2)}</span>
+            </div>
+          )}
+          {settings!.discount && subBill.totalDiscountAmount > 0 && (
             <div className="total-row">
               <span>Discount:</span>
               <span>-₹{subBill.totalDiscountAmount.toFixed(2)}</span>
             </div>
           )}
-          <div className="total-row grand-total">
-            <span>TOTAL:</span>
-            <span>₹{subBill.totalAmount.toFixed(2)}</span>
-          </div>
+          {settings!.grandTotal && (
+            <div className="total-row grand-total">
+              <span>TOTAL:</span>
+              <span>₹{subBill.totalAmount.toFixed(2)}</span>
+            </div>
+          )}
         </div>
 
         {/* Payment */}
-        <div className="section">
-          <div className="row">
-            <span className="label">Payment Mode:</span>
-            <span>{subBill.paymentMode}</span>
+        {(settings!.paymentMode || settings!.cashAmount || settings!.onlineAmount || settings!.creditAmount) && (
+          <div className="section">
+            {settings!.paymentMode && (
+              <div className="row">
+                <span className="label">Payment Mode:</span>
+                <span>{subBill.paymentMode}</span>
+              </div>
+            )}
+            {settings!.cashAmount && subBill.cashPaidAmount > 0 && (
+              <div className="row">
+                <span>Cash:</span>
+                <span>₹{subBill.cashPaidAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {settings!.onlineAmount && subBill.onlinePaidAmount > 0 && (
+              <div className="row">
+                <span>Online:</span>
+                <span>₹{subBill.onlinePaidAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {settings!.creditAmount && subBill.creditPaidAmount > 0 && (
+              <div className="row">
+                <span>Credit:</span>
+                <span>₹{subBill.creditPaidAmount.toFixed(2)}</span>
+              </div>
+            )}
           </div>
-          {subBill.cashPaidAmount > 0 && (
-            <div className="row">
-              <span>Cash:</span>
-              <span>₹{subBill.cashPaidAmount.toFixed(2)}</span>
-            </div>
-          )}
-          {subBill.onlinePaidAmount > 0 && (
-            <div className="row">
-              <span>Online:</span>
-              <span>₹{subBill.onlinePaidAmount.toFixed(2)}</span>
-            </div>
-          )}
-          {subBill.creditPaidAmount > 0 && (
-            <div className="row">
-              <span>Credit:</span>
-              <span>₹{subBill.creditPaidAmount.toFixed(2)}</span>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Footer */}
-        <div className="footer">
-          <div>Thank you for your business!</div>
-          <div>Please visit again</div>
-        </div>
+        {settings!.footer && (
+          <div className="footer">
+            <div>Thank you for your business!</div>
+            <div>Please visit again</div>
+          </div>
+        )}
 
         {/* Page Break (except for last sub-bill) */}
         {index < sale.subBills!.length - 1 && <div className="page-break"></div>}

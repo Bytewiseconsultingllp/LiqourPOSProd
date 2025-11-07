@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Printer, X } from 'lucide-react';
 import { Button } from '@/app/dashboard/components/ui/button';
+import { getPrintSettings, getPrintSettingsSync } from '@/lib/print-settings';
+import { BillFieldSettings } from '@/types/print-settings';
 
 interface BillItem {
   productName: string;
@@ -51,6 +53,26 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
   billType = 'main',
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const [settings, setSettings] = useState<BillFieldSettings | null>(null);
+
+  // Load print settings on mount
+  useEffect(() => {
+    // Use sync version for immediate render
+    const syncSettings = getPrintSettingsSync();
+    setSettings(billType === 'main' ? syncSettings.mainBill : syncSettings.subBill);
+    
+    // Then fetch fresh settings from API
+    const loadSettings = async () => {
+      try {
+        const freshSettings = await getPrintSettings();
+        setSettings(billType === 'main' ? freshSettings.mainBill : freshSettings.subBill);
+      } catch (error) {
+        console.error('Failed to load fresh print settings:', error);
+      }
+    };
+    
+    loadSettings();
+  }, [billType]);
 
   // Get organization info from localStorage
   const getOrgInfo = () => {
@@ -221,6 +243,11 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
     (billData.billDiscountAmount || 0) +
     (billData.promotionDiscountAmount || 0);
 
+  // Don't render until settings are loaded
+  if (!settings) {
+    return null;
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -237,7 +264,7 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
           </button>
         </div>
 
-        {/* Bill Preview - Scrollable */}
+        {/* Bill Preview - Scrollable - Matches PDF exactly */}
         <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
           <div
             ref={printRef}
@@ -246,14 +273,16 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
           >
             {/* Header */}
             <div className="header">
-              <div className="org-name">{orgInfo.name}</div>
-              {orgInfo.address && (
+              {settings.organizationName && (
+                <div className="org-name">{orgInfo.name}</div>
+              )}
+              {settings.organizationAddress && orgInfo.address && (
                 <div className="org-details">{orgInfo.address}</div>
               )}
-              {orgInfo.phone && (
+              {settings.organizationPhone && orgInfo.phone && (
                 <div className="org-details">Ph: {orgInfo.phone}</div>
               )}
-              {orgInfo.gstin && (
+              {settings.organizationGSTIN && orgInfo.gstin && (
                 <div className="org-details">GSTIN: {orgInfo.gstin}</div>
               )}
               <div className="bill-type">
@@ -263,36 +292,42 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
 
             {/* Bill Info */}
             <div className="section">
-              <div className="row">
-                <span className="label">Bill No:</span>
-                <span>{billData.totalBillId || billData.billNumber || 'N/A'}</span>
-              </div>
-              {billType === 'sub' && billData.subBillId && (
+              {settings.billNumber && (
+                <div className="row">
+                  <span className="label">Bill No:</span>
+                  <span>{billData.totalBillId || billData.billNumber || 'N/A'}</span>
+                </div>
+              )}
+              {settings.subBillNumber && billType === 'sub' && billData.subBillId && (
                 <div className="row">
                   <span className="label">Sub Bill:</span>
                   <span>{billData.subBillId}</span>
                 </div>
               )}
-              <div className="row">
-                <span className="label">Date:</span>
-                <span>
-                  {new Date(billData.saleDate || billData.createdAt || new Date()).toLocaleString(
-                    'en-IN',
-                    {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }
-                  )}
-                </span>
-              </div>
-              <div className="row">
-                <span className="label">Customer:</span>
-                <span>{billData.customerName}</span>
-              </div>
-              {billData.customerPhone && (
+              {settings.date && (
+                <div className="row">
+                  <span className="label">Date:</span>
+                  <span>
+                    {new Date(billData.saleDate || billData.createdAt || new Date()).toLocaleString(
+                      'en-IN',
+                      {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }
+                    )}
+                  </span>
+                </div>
+              )}
+              {settings.customerName && (
+                <div className="row">
+                  <span className="label">Customer:</span>
+                  <span>{billData.customerName}</span>
+                </div>
+              )}
+              {settings.customerPhone && billData.customerPhone && (
                 <div className="row">
                   <span className="label">Phone:</span>
                   <span>{billData.customerPhone}</span>
@@ -304,18 +339,23 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
             <div className="items-table">
               {billData.items.map((item, index) => (
                 <div key={index} className="item-row">
-                  <div className="item-name">
-                    {item.productName}
-                    {item.brand && ` - ${item.brand}`}
-                  </div>
+                  {settings.productName && (
+                    <div className="item-name">
+                      {item.productName}
+                      {settings.brand && item.brand && ` - ${item.brand}`}
+                    </div>
+                  )}
                   <div className="item-details">
                     <span>
-                      {item.quantity} x ₹{item.rate.toFixed(2)}
-                      {item.volumePerUnitML && ` (${item.volumePerUnitML}ml)`}
+                      {settings.quantity && `${item.quantity} x `}
+                      {settings.rate && `₹${item.rate.toFixed(2)}`}
+                      {settings.volume && item.volumePerUnitML && ` (${item.volumePerUnitML}ml)`}
                     </span>
-                    <span>₹{(item.rate * item.quantity).toFixed(2)}</span>
+                    {settings.itemSubtotal && (
+                      <span>₹{(item.rate * item.quantity).toFixed(2)}</span>
+                    )}
                   </div>
-                  {item.discountAmount && item.discountAmount > 0 && (
+                  {settings.itemDiscount && item.discountAmount && item.discountAmount > 0 && (
                     <div className="item-details" style={{ fontSize: '10px', color: '#666' }}>
                       <span>Discount</span>
                       <span>-₹{item.discountAmount.toFixed(2)}</span>
@@ -326,61 +366,73 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
             </div>
 
             {/* Summary */}
-            <div className="section">
-              <div className="row">
-                <span>Total Items:</span>
-                <span>{billData.items.length}</span>
+            {(settings.totalItems || settings.totalQuantity || settings.totalVolume) && (
+              <div className="section">
+                {settings.totalItems && (
+                  <div className="row">
+                    <span>Total Items:</span>
+                    <span>{billData.items.length}</span>
+                  </div>
+                )}
+                {settings.totalQuantity && (
+                  <div className="row">
+                    <span>Total Quantity:</span>
+                    <span>{totalQuantity} bottles</span>
+                  </div>
+                )}
+                {settings.totalVolume && totalVolume > 0 && (
+                  <div className="row">
+                    <span>Total Volume:</span>
+                    <span>{(totalVolume / 1000).toFixed(2)}L</span>
+                  </div>
+                )}
               </div>
-              <div className="row">
-                <span>Total Quantity:</span>
-                <span>{totalQuantity} bottles</span>
-              </div>
-              {totalVolume > 0 && (
-                <div className="row">
-                  <span>Total Volume:</span>
-                  <span>{(totalVolume / 1000).toFixed(2)}L</span>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Totals */}
             <div className="totals">
-              <div className="total-row">
-                <span>Subtotal:</span>
-                <span>₹{subtotal.toFixed(2)}</span>
-              </div>
-              {totalDiscount > 0 && (
+              {settings.subtotal && (
+                <div className="total-row">
+                  <span>Subtotal:</span>
+                  <span>₹{subtotal.toFixed(2)}</span>
+                </div>
+              )}
+              {settings.discount && totalDiscount > 0 && (
                 <div className="total-row">
                   <span>Discount:</span>
                   <span>-₹{totalDiscount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="total-row grand-total">
-                <span>TOTAL:</span>
-                <span>₹{billData.totalAmount.toFixed(2)}</span>
-              </div>
+              {settings.grandTotal && (
+                <div className="total-row grand-total">
+                  <span>TOTAL:</span>
+                  <span>₹{billData.totalAmount.toFixed(2)}</span>
+                </div>
+              )}
             </div>
 
             {/* Payment */}
-            {billData.payment && (
+            {billData.payment && (settings.paymentMode || settings.cashAmount || settings.onlineAmount || settings.creditAmount) && (
               <div className="section">
-                <div className="row">
-                  <span className="label">Payment Mode:</span>
-                  <span>{billData.payment.mode}</span>
-                </div>
-                {billData.payment.cashAmount && billData.payment.cashAmount > 0 && (
+                {settings.paymentMode && (
+                  <div className="row">
+                    <span className="label">Payment Mode:</span>
+                    <span>{billData.payment.mode}</span>
+                  </div>
+                )}
+                {settings.cashAmount && billData.payment.cashAmount && billData.payment.cashAmount > 0 && (
                   <div className="row">
                     <span>Cash:</span>
                     <span>₹{billData.payment.cashAmount.toFixed(2)}</span>
                   </div>
                 )}
-                {billData.payment.onlineAmount && billData.payment.onlineAmount > 0 && (
+                {settings.onlineAmount && billData.payment.onlineAmount && billData.payment.onlineAmount > 0 && (
                   <div className="row">
                     <span>Online:</span>
                     <span>₹{billData.payment.onlineAmount.toFixed(2)}</span>
                   </div>
                 )}
-                {billData.payment.creditAmount && billData.payment.creditAmount > 0 && (
+                {settings.creditAmount && billData.payment.creditAmount && billData.payment.creditAmount > 0 && (
                   <div className="row">
                     <span>Credit:</span>
                     <span>₹{billData.payment.creditAmount.toFixed(2)}</span>
@@ -390,10 +442,12 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
             )}
 
             {/* Footer */}
-            <div className="footer">
-              <div>Thank you for your business!</div>
-              <div>Please visit again</div>
-            </div>
+            {settings.footer && (
+              <div className="footer">
+                <div>Thank you for your business!</div>
+                <div>Please visit again</div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { registerAllModels } from '@/lib/model-registry';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
 
 /**
  * Extract user info from JWT token
@@ -82,26 +79,16 @@ export async function POST(
       );
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'products');
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const extension = file.name.split('.').pop();
-    const filename = `${params.id}_${timestamp}.${extension}`;
-    const filepath = join(uploadsDir, filename);
-
-    // Convert file to buffer and save
+    // Convert image to base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filepath, buffer);
+    const base64Image = buffer.toString('base64');
 
-    // Update product with image URL
-    const imageUrl = `/uploads/products/${filename}`;
-    product.imageUrl = imageUrl;
+    // Update product with base64 image and MIME type
+    product.imageBase64 = base64Image;
+    product.imageMimeType = file.type;
+    // Keep imageUrl for backward compatibility (can be removed later)
+    product.imageUrl = base64Image;
     await product.save();
 
     console.log(`✅ Image uploaded for product: ${product.name}`);
@@ -109,7 +96,10 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: 'Image uploaded successfully',
-      data: { imageUrl },
+      data: { 
+        imageBase64: base64Image,
+        imageMimeType: file.type 
+      },
     });
   } catch (error: any) {
     console.error('Error uploading image:', error);
@@ -155,8 +145,10 @@ export async function DELETE(
       );
     }
 
-    // Remove image URL
+    // Remove image data
     product.imageUrl = undefined;
+    product.imageBase64 = undefined;
+    product.imageMimeType = undefined;
     await product.save();
 
     console.log(`✅ Image removed from product: ${product.name}`);

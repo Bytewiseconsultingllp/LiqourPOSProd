@@ -40,9 +40,10 @@ export interface ProductDetails {
   // Basic Info
   name: string;
   description?: string;
-  imageUrl?: string;
+  imageUrl?: string; // Deprecated - kept for backward compatibility
+  imageBase64?: string; // New: Base64 encoded image
+  imageMimeType?: string; // MIME type of the image (e.g., image/jpeg)
   sku?: string;
-  barcode?: string; // Deprecated - kept for backward compatibility
   barcodes?: Barcode[]; // New: Multiple barcodes support
   brand: string;
   category: string;

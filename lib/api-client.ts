@@ -66,13 +66,15 @@ export async function apiFetch(
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
-  // Add tenant ID if available
+  // Add organization/tenant headers if available
   const organization = localStorage.getItem('organization');
-  if (organization && !headers.has('x-tenant-id')) {
+  if (organization) {
     try {
       const orgData = JSON.parse(organization);
-      if (orgData.id) {
-        headers.set('x-tenant-id', orgData.id);
+      const orgId: string | undefined = orgData?._id || orgData?.id;
+      if (orgId) {
+        if (!headers.has('x-tenant-id')) headers.set('x-tenant-id', orgId);
+        if (!headers.has('x-organization-id')) headers.set('x-organization-id', orgId);
       }
     } catch (e) {
       console.warn('Failed to parse organization data');
