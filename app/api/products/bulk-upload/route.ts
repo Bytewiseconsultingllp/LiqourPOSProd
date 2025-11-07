@@ -48,92 +48,96 @@ export async function POST(request: NextRequest) {
       failed: 0,
       skipped: 0,
       errors: [] as string[],
-      createdProducts: [] as any[],
     };
 
-    // Process each product
+    // Preload existing product names to skip duplicates
+    const names = products.map((p: any) => p.name).filter(Boolean);
+    const existing = await Product.find(
+      { organizationId: user.organizationId, name: { $in: names } },
+      'name'
+    );
+    const existingNames = new Set(existing.map((p: any) => p.name));
+
+    // Validate and prepare new product docs
+    const newProductsData = [] as any[];
     for (let i = 0; i < products.length; i++) {
-      const productData = products[i];
-      
-      try {
-        // Validate required fields
-        if (!productData.name || !productData.brand || !productData.category) {
-          results.failed++;
-          results.errors.push(`Row ${i + 1}: Missing required fields (name, brand, or category)`);
-          continue;
-        }
-
-        if (!productData.pricePerUnit || productData.pricePerUnit <= 0) {
-          results.failed++;
-          results.errors.push(`Row ${i + 1}: Invalid price per unit`);
-          continue;
-        }
-
-        if (!productData.volumeML || productData.volumeML <= 0) {
-          results.failed++;
-          results.errors.push(`Row ${i + 1}: Invalid volume`);
-          continue;
-        }
-
-        // Check if product with same name already exists (skip, don't update)
-        const existingProduct = await Product.findOne({
-          name: productData.name,
-          organizationId: user.organizationId,
-        });
-
-        if (existingProduct) {
-          results.skipped++;
-          results.errors.push(`Row ${i + 1}: Product "${productData.name}" already exists - skipped`);
-          continue;
-        }
-
-        // Create product
-        const newProduct = new Product({
-          ...productData,
-          organizationId: user.organizationId,
-          createdAt: new Date().toISOString(),
-          isActive: productData.isActive !== false,
-        });
-
-        await newProduct.save();
-
-        // Log inventory transaction
-        await InventoryTransaction.create({
-          productId: newProduct._id,
-          type: 'adjustment',
-          quantity: productData.currentStock || 0,
-          previousStock: 0,
-          newStock: productData.currentStock || 0,
-          reason: 'Initial stock (bulk upload)',
-          performedBy: user.userId,
-          organizationId: user.organizationId,
-        });
-
-        // Create vendor stock if priority 1 vendor exists
-        if (priority1Vendor) {
-          try {
-            await VendorStock.create({
-              vendorId: priority1Vendor._id,
-              productId: newProduct._id,
-              productName: newProduct.name,
-              brand: newProduct.brand,
-              volumeML: newProduct.volumeML,
-              currentStock: productData.currentStock || 0,
-              lastPurchasePrice: productData.pricePerUnit || 0,
-              lastPurchaseDate: new Date(),
-              organizationId: user.organizationId,
-            });
-          } catch (vendorStockError: any) {
-            console.error(`Vendor stock creation failed for ${newProduct.name}:`, vendorStockError);
-            // Don't fail the product creation
-          }
-        }
-
-        results.success++;
-        results.createdProducts.push(newProduct);
-      } catch (error: any) {
+      const p = products[i];
+      if (!p || !p.name || !p.brand || !p.category) {
         results.failed++;
-        results.errors.push(`Row ${i + 1}: ${error.message}`);
+        results.errors.push(`Row ${i + 1}: Missing required fields (name, brand, category)`);
+        continue;
+      }
+      if (!p.pricePerUnit || p.pricePerUnit <= 0) {
+        results.failed++;
+        results.errors.push(`Row ${i + 1}: Invalid price per unit`);
+        continue;
+      }
+      if (!p.volumeML || p.volumeML <= 0) {
+        results.failed++;
+        results.errors.push(`Row ${i + 1}: Invalid volume`);
+        continue;
+      }
+      if (existingNames.has(p.name)) {
+        results.skipped++;
+        results.errors.push(`Row ${i + 1}: Product "${p.name}" already exists - skipped`);
+        continue;
+      }
+
+      newProductsData.push({
+        ...p,
+        organizationId: user.organizationId,
+        createdAt: new Date().toISOString(),
+        isActive: p.isActive !== false,
+      });
+    }
+
+    // If nothing to insert, return
+    if (newProductsData.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: `Bulk upload completed. ${results.success} created, ${results.skipped} skipped, ${results.failed} failed.`,
+        results,
+      });
+    }
+
+    // Insert products in bulk
+    const createdProducts = await Product.insertMany(newProductsData, { ordered: true });
+    results.success = createdProducts.length;
+
+    // Prepare related documents for bulk insert
+    const inventoryDocs = createdProducts.map((prod: any, idx: number) => ({
+      productId: prod._id,
+      type: 'adjustment',
+      quantity: Number(newProductsData[idx].currentStock || 0),
+      previousStock: 0,
+      newStock: Number(newProductsData[idx].currentStock || 0),
+      reason: 'Initial stock (bulk upload)',
+      performedBy: user.userId,
+      organizationId: user.organizationId,
+    }));
+
+    if (inventoryDocs.length > 0) {
+      await InventoryTransaction.insertMany(inventoryDocs, { ordered: false });
+    }
+
+    if (priority1Vendor) {
+      const vendorStockDocs = createdProducts.map((prod: any, idx: number) => ({
+        vendorId: priority1Vendor._id,
+        productId: prod._id,
+        productName: prod.name,
+        brand: prod.brand,
+        volumeML: prod.volumeML,
+        currentStock: Number(newProductsData[idx].currentStock || 0),
+        lastPurchasePrice: Number(newProductsData[idx].pricePerUnit || 0),
+        lastPurchaseDate: new Date(),
+        organizationId: user.organizationId,
+      }));
+      if (vendorStockDocs.length > 0) {
+        try {
+          await VendorStock.insertMany(vendorStockDocs, { ordered: false });
+        } catch (vendorStockError: any) {
+          console.error('VendorStock bulk insert warnings:', vendorStockError?.message || vendorStockError);
+        }
       }
     }
 

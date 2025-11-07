@@ -15,7 +15,7 @@ export default function VendorManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     tin: '',
@@ -55,8 +55,8 @@ export default function VendorManagementPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('accessToken');
-      const orgId = localStorage.getItem('organization') 
-        ? JSON.parse(localStorage.getItem('organization')!).id 
+      const orgId = localStorage.getItem('organization')
+        ? JSON.parse(localStorage.getItem('organization')!).id
         : 'default';
 
       const response = await apiFetch('/api/vendors');
@@ -81,7 +81,7 @@ export default function VendorManagementPage() {
 
   const getNextPriority = () => {
     if (vendors.length === 0) return 1;
-    const priorities = vendors.map(v => v.priority || 0);
+    const priorities = vendors.map(v => v.vendorPriority || 0);
     return Math.max(...priorities) + 1;
   };
 
@@ -104,7 +104,7 @@ export default function VendorManagementPage() {
         bankName: vendor.bankDetails?.bankName || '',
         accountNumber: vendor.bankDetails?.accountNumber || '',
         ifscCode: vendor.bankDetails?.ifscCode || '',
-        priority: vendor.priority || vendor.vendorPriority || 1,
+        priority: vendor.vendorPriority || getNextPriority() ,
         isActive: vendor.isActive !== false,
       });
     } else {
@@ -139,7 +139,7 @@ export default function VendorManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate required fields
     if (!formData.name || !formData.tin || !formData.cin) {
       showToast('Name, TIN, and CIN are required', 'error');
@@ -158,7 +158,7 @@ export default function VendorManagementPage() {
 
     // Check for duplicate priority
     const duplicatePriority = vendors.find(
-      v => v.priority === formData.priority && v._id !== editingVendor?._id
+      v => v.vendorPriority === formData.priority && v._id !== editingVendor?._id
     );
     if (duplicatePriority) {
       showToast(`Priority ${formData.priority} is already assigned to ${duplicatePriority.name}`, 'error');
@@ -168,14 +168,14 @@ export default function VendorManagementPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const orgId = localStorage.getItem('organization') 
-        ? JSON.parse(localStorage.getItem('organization')!).id 
+      const orgId = localStorage.getItem('organization')
+        ? JSON.parse(localStorage.getItem('organization')!).id
         : 'default';
 
-      const url = editingVendor 
+      const url = editingVendor
         ? `/api/vendors/${editingVendor._id}`
         : '/api/vendors';
-      
+
       const method = editingVendor ? 'PUT' : 'POST';
 
       const response = await apiFetch(url, {
@@ -222,7 +222,7 @@ export default function VendorManagementPage() {
         editingVendor ? 'Vendor updated successfully!' : 'Vendor created successfully!',
         'success'
       );
-      
+
       handleCloseModal();
       fetchVendors();
     } catch (error: any) {
@@ -240,8 +240,8 @@ export default function VendorManagementPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const orgId = localStorage.getItem('organization') 
-        ? JSON.parse(localStorage.getItem('organization')!).id 
+      const orgId = localStorage.getItem('organization')
+        ? JSON.parse(localStorage.getItem('organization')!).id
         : 'default';
 
       const response = await apiFetch(`/api/vendors/${vendor._id}`, {
@@ -264,20 +264,19 @@ export default function VendorManagementPage() {
   };
 
   const filteredVendors = vendors
-    .filter(vendor => 
+    .filter(vendor =>
       vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vendor.tin.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vendor.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vendor.phone?.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a, b) => (a.priority || 999) - (b.priority || 999));
+    .sort((a, b) => (a.vendorPriority || 999) - (b.vendorPriority || 999));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${
-          toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-        } text-white`}>
+        <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+          } text-white`}>
           {toast.message}
         </div>
       )}
@@ -356,7 +355,7 @@ export default function VendorManagementPage() {
                     <tr key={vendor._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-bold">
-                          {vendor.priority || '-'}
+                          {vendor.vendorPriority || '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -364,13 +363,12 @@ export default function VendorManagementPage() {
                         {vendor.gstin && <div className="text-xs text-gray-500">GSTIN: {vendor.gstin}</div>}
                       </td>
                       <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{vendor.tin}</td>
-                      <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{vendor.contactPerson || '-'}</td>
-                      <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{vendor.email || '-'}</td>
-                      <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{vendor.phone || '-'}</td>
+                      <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{vendor.name || '-'}</td>
+                      <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{vendor.contactInfo?.email || '-'}</td>
+                      <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{vendor.contactInfo?.phone || '-'}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          vendor.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${vendor.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
                           {vendor.isActive !== false ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -468,7 +466,7 @@ export default function VendorManagementPage() {
                     <Input
                       type="number"
                       value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 1 })}
+                      onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
                       min="1"
                       required
                       className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"

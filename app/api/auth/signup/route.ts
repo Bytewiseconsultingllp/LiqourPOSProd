@@ -10,6 +10,17 @@ import { sendOrgVerificationEmail } from '@/lib/email';
 const signupSchema = z.object({
   organizationName: z.string().min(2, 'Organization name must be at least 2 characters'),
   email: z.string().email('Invalid email format'),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  pincode: z.string().optional(),
+  country: z.string().optional(),
+  gstNumber: z.string().optional(),
+  licenseNumber: z.string().optional(),
+  fssaiNumber: z.string().optional(),
+  panNumber: z.string().optional(),
+  website: z.string().url().optional().or(z.literal('')),
   adminName: z.string().min(2, 'Admin name must be at least 2 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   subdomain: z.string().min(3).regex(/^[a-z0-9-]+$/, 'Subdomain must contain only lowercase letters, numbers, and hyphens').optional(),
@@ -28,7 +39,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { organizationName, email, adminName, password, subdomain } = validation.data;
+    const { 
+      organizationName, 
+      email, 
+      phone,
+      address,
+      city,
+      state,
+      pincode,
+      country,
+      gstNumber,
+      licenseNumber,
+      fssaiNumber,
+      panNumber,
+      website,
+      adminName, 
+      password, 
+      subdomain 
+    } = validation.data;
 
     // Normalize email
     const normalizedEmail = normalizeEmail(email);
@@ -94,6 +122,17 @@ export async function POST(request: NextRequest) {
     const pendingOrg = await PendingOrganization.create({
       organizationName,
       email: normalizedEmail,
+      phone,
+      address,
+      city,
+      state,
+      pincode,
+      country: country || 'India',
+      gstNumber,
+      licenseNumber,
+      fssaiNumber,
+      panNumber,
+      website,
       adminName,
       hashedPassword,
       subdomain,

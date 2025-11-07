@@ -47,12 +47,23 @@ export async function POST(request: NextRequest) {
     const organization = await Organization.create({
       name: pendingOrg.organizationName,
       email: pendingOrg.email,
+      phone: pendingOrg.phone,
+      address: pendingOrg.address,
+      city: pendingOrg.city,
+      state: pendingOrg.state,
+      pincode: pendingOrg.pincode,
+      country: pendingOrg.country || 'India',
+      gstNumber: pendingOrg.gstNumber,
+      licenseNumber: pendingOrg.licenseNumber,
+      fssaiNumber: pendingOrg.fssaiNumber,
+      panNumber: pendingOrg.panNumber,
+      website: pendingOrg.website,
       subdomain: pendingOrg.subdomain,
       isActive: true,
       isVerified: true,
       settings: {
-        currency: 'USD',
-        timezone: 'America/New_York',
+        currency: 'INR',
+        timezone: 'Asia/Kolkata',
         taxRate: 0,
       },
     });
@@ -69,12 +80,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Org admin created in main database: ${adminUser.email}`);
 
-    // Create org admin user in TENANT database
+    // Create org admin user in TENANT database and OrgDetails
     try {
       // Register all model schemas      
       // Get tenant connection
       const tenantConnection = await getTenantConnection(organization._id.toString());
       const TenantUser = getTenantModel(tenantConnection, 'User');
+      const OrgDetails = getTenantModel(tenantConnection, 'OrgDetails');
 
       // Create org admin in tenant database
       await TenantUser.create({
@@ -87,8 +99,29 @@ export async function POST(request: NextRequest) {
       });
 
       console.log(`✅ Org admin created in tenant database: ${adminUser.email}`);
+
+      // Create OrgDetails in tenant database
+      await OrgDetails.create({
+        organizationId: organization._id.toString(),
+        name: pendingOrg.organizationName,
+        email: pendingOrg.email,
+        phone: pendingOrg.phone,
+        address: pendingOrg.address,
+        city: pendingOrg.city,
+        state: pendingOrg.state,
+        pincode: pendingOrg.pincode,
+        country: pendingOrg.country || 'India',
+        gstNumber: pendingOrg.gstNumber,
+        licenseNumber: pendingOrg.licenseNumber,
+        fssaiNumber: pendingOrg.fssaiNumber,
+        panNumber: pendingOrg.panNumber,
+        website: pendingOrg.website,
+        qrCodes: [], // Initialize with empty QR codes array
+      });
+
+      console.log(`✅ OrgDetails created in tenant database for: ${organization.name}`);
     } catch (tenantError) {
-      console.error('Failed to create org admin in tenant database:', tenantError);
+      console.error('Failed to create org admin/details in tenant database:', tenantError);
       // Rollback: Delete organization and admin user
       await User.findByIdAndDelete(adminUser._id);
       await Organization.findByIdAndDelete(organization._id);

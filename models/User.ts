@@ -10,6 +10,8 @@ export interface IUser {
   role: UserRole;
   organizationId: string;
   isActive: boolean;
+  isEmployee: boolean;
+  salary?: number;
   lastLogin?: Date;
   refreshToken?: string;
   passwordResetToken?: string;
@@ -53,6 +55,14 @@ const UserSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    isEmployee: {
+      type: Boolean,
+      default: false,
+    },
+    salary: {
+      type: Number,
+      min: 0,
     },
     lastLogin: {
       type: Date,

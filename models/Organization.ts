@@ -4,6 +4,17 @@ export interface IOrganization {
   _id: string;
   name: string;
   email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  gstNumber?: string;
+  licenseNumber?: string;
+  fssaiNumber?: string;
+  panNumber?: string;
+  website?: string;
   subdomain?: string;
   domain?: string;
   isActive: boolean;
@@ -35,6 +46,53 @@ const OrganizationSchema = new Schema<IOrganization>(
         message: 'Invalid email format',
       },
     },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    address: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+    },
+    pincode: {
+      type: String,
+      trim: true,
+    },
+    country: {
+      type: String,
+      trim: true,
+      default: 'India',
+    },
+    gstNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    licenseNumber: {
+      type: String,
+      trim: true,
+    },
+    fssaiNumber: {
+      type: String,
+      trim: true,
+    },
+    panNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    website: {
+      type: String,
+      trim: true,
+    },
     subdomain: {
       type: String,
       sparse: true,
@@ -58,8 +116,8 @@ const OrganizationSchema = new Schema<IOrganization>(
     settings: {
       type: Schema.Types.Mixed,
       default: {
-        currency: 'USD',
-        timezone: 'America/New_York',
+        currency: 'INR',
+        timezone: 'Asia/Kolkata',
         taxRate: 0,
       },
     },

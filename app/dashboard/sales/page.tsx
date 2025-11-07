@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/api-client";
 import { useCustomers } from "@/lib/hooks/useCustomers";
 import { useProducts } from "@/lib/hooks/useProducts";
 import { Customer } from "@/types/customer";
-import { CartItem, Payment, ProductDetails } from "@/types/product";
+import { CartItem, Payment, Product, ProductDetails } from "@/types/product";
 import {
   AlertCircle,
   CreditCard,
@@ -54,7 +54,7 @@ const Index = () => {
   const [selectedVolumes, setSelectedVolumes] = useState<number[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<ProductDetails | null>(
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(
     null
   );
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
@@ -117,7 +117,7 @@ const Index = () => {
     setSelectedCategories([]);
   };
 
-  const handleProductSelect = (product: ProductDetails) => {
+  const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
     setEditingItem(null);
     setQuantityDialogOpen(true);
@@ -132,7 +132,7 @@ const Index = () => {
       category: item.category,
       volumeML: item.volumePerUnitML,
       pricePerUnit: item.rate,
-      currentStock: 0, // Not available in CartItem
+      currentStock: selectedProduct?.currentStock || 0, // Not available in CartItem
       taxInfo: {
         vat: item.vatAmount,
         tcs: item.tcsAmount,
@@ -266,7 +266,7 @@ const Index = () => {
         customerPhone: selectedCustomer?.contactInfo?.phone,
         customerType: selectedCustomer?._id === "walk-in"
           ? "walk-in"
-          : "registered",
+          : selectedCustomer.type,
         items: cartItems.map((item) => ({
           productId: item.productId,
           productName: item.productName,

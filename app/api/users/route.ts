@@ -1,6 +1,7 @@
 import { hashPassword, normalizeEmail } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongoose';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import { registerAllModels } from '@/lib/model-registry';
 import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -10,6 +11,8 @@ const createUserSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.enum(['org_admin', 'admin', 'manager', 'sales', 'accountant', 'tax_officer']),
+  isEmployee: z.boolean().optional(),
+  salary: z.number().min(0).optional(),
 });
 
 const updateUserSchema = z.object({
@@ -17,6 +20,8 @@ const updateUserSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().min(8).optional(),
   role: z.enum(['org_admin', 'admin', 'manager', 'sales', 'accountant', 'tax_officer']).optional(),
+  isEmployee: z.boolean().optional(),
+  salary: z.number().min(0).optional(),
 });
 
 /**
@@ -105,7 +110,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, password, role } = validation.data;
+    const { name, email, password, role, isEmployee, salary } = validation.data;
 
     // Prevent creating another org_admin
     if (role === 'org_admin') {
@@ -120,6 +125,8 @@ export async function POST(request: NextRequest) {
 
     // Hash password
     const hashedPassword = await hashPassword(password);
+    // Ensure all models are registered
+    registerAllModels();
     // Create user in TENANT database FIRST
     const tenantConnection = await getTenantConnection(user.organizationId);
     const TenantUser = getTenantModel(tenantConnection, 'User');
@@ -137,6 +144,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const parsedSalary = typeof salary === 'number' ? salary : undefined;
+
     const newUserTenant = await TenantUser.create({
       name,
       email: normalizedEmail,
@@ -144,6 +153,8 @@ export async function POST(request: NextRequest) {
       role,
       organizationId: user.organizationId,
       isActive: true,
+      isEmployee: isEmployee || false,
+      salary: isEmployee ? parsedSalary : undefined,
     });
 
     console.log(`✅ User created in tenant database: ${newUserTenant.email}`);
@@ -161,6 +172,8 @@ export async function POST(request: NextRequest) {
       role,
       organizationId: user.organizationId,
       isActive: true,
+      isEmployee: isEmployee || false,
+      salary: isEmployee ? parsedSalary : undefined,
     });
 
     console.log(`✅ User created in main database: ${newUserMain.email}`);

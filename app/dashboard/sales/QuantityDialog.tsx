@@ -43,7 +43,7 @@ export function QuantityDialog({
   }, [open, initialQuantity, initialDiscount]);
 
   const handleConfirm = () => {
-    const maxQty = typeof product?.currentStock === 'number' ? product.currentStock : undefined;
+    const maxQty = product?.currentStock;
     if (maxQty !== undefined && quantity > maxQty) {
       toast.error(`Quantity cannot exceed available stock (${maxQty}).`);
       return;
@@ -68,7 +68,7 @@ export function QuantityDialog({
         <DialogHeader>
           <DialogTitle>Adjust Quantity & Discount</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4 py-4">
           <div className="flex items-center gap-4">
             <img
@@ -85,14 +85,24 @@ export function QuantityDialog({
           <div className="space-y-2">
             <Label>Quantity (Bottles)</Label>
             <div className="flex items-center gap-2">
-              <Button
+              {/* <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
               >
                 <Minus className="h-4 w-4" />
+              </Button> */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (quantity > 1) setQuantity(quantity - 1);
+                }}
+              >
+                <Minus className="h-4 w-4" />
               </Button>
-              <Input
+
+              {/* <Input
                 type="number"
                 value={quantity}
                 onChange={(e) => {
@@ -124,8 +134,39 @@ export function QuantityDialog({
                 }}
                 className="text-center"
                 min="1"
+              /> */}
+              <Input
+                type="number"
+                value={quantity}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setQuantity(0);
+                    return;
+                  }
+                  const parsed = parseInt(value, 10);
+                  if (!isNaN(parsed) && parsed >= 0) {
+                    const maxQty = typeof product.currentStock === 'number' ? product.currentStock : undefined;
+                    setQuantity(maxQty !== undefined ? Math.min(parsed, maxQty) : parsed);
+                  }
+                }}
+                onBlur={() => {
+                  const maxQty = typeof product.currentStock === 'number' ? product.currentStock : undefined;
+                  if (quantity < 1) {
+                    if (maxQty !== undefined && maxQty <= 0) {
+                      setQuantity(0);
+                    } else {
+                      setQuantity(1);
+                    }
+                  } else if (maxQty !== undefined && quantity > maxQty) {
+                    setQuantity(maxQty);
+                  }
+                }}
+                className="text-center"
+                min="1"
               />
-              <Button
+
+              {/* <Button
                 variant="outline"
                 size="icon"
                 onClick={() => {
@@ -135,11 +176,27 @@ export function QuantityDialog({
                 }}
               >
                 <Plus className="h-4 w-4" />
+              </Button> */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const maxQty = product.currentStock ? product.currentStock : undefined;
+                  console.log("currentstock",product.currentStock)
+                  console.log("maxQty",maxQty)
+                  if (maxQty !== undefined) {
+                    setQuantity(Math.min(quantity + 1, maxQty));
+                  } else {
+                    setQuantity(quantity + 1);
+                  }
+                }}
+              >
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
             {product.currentStock != null && (
               <p className="text-xs text-muted-foreground">
-                Max available: {(product.currentStock ?? 0)} bottles
+                Max available: {(product.currentStock)} bottles
               </p>
             )}
           </div>

@@ -2,12 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Printer } from 'lucide-react';
+import { printStockSheet } from '@/lib/printStockSheet';
+import { Product } from '@/types/product';
+import { apiFetch } from '@/lib/api-client';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
-
+  const [products, setProducts] = useState<Product[]>([])
+  const [error, setError] = useState<any>()
+  const fetchProducts = async (token: string) => {
+    try {
+      const response = await apiFetch('/api/products');
+      if (!response.ok) throw new Error('Failed to fetch products');
+      const data = await response.json();
+      setProducts(data.data || []);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
   useEffect(() => {
     // Check authentication
     const accessToken = localStorage.getItem('accessToken');
@@ -21,6 +36,7 @@ export default function DashboardPage() {
 
     setUser(JSON.parse(userData));
     setOrganization(JSON.parse(orgData));
+    fetchProducts(accessToken)
   }, [router]);
 
   const handleLogout = () => {
@@ -39,42 +55,35 @@ export default function DashboardPage() {
     );
   }
 
+
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Navigation */}
-      {/* <nav className="bg-white dark:bg-gray-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                {organization.name}
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {user.name} ({user.role})
-              </span>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav> */}
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Dashboard
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Welcome back, {user.name}!
-          </p>
+        <div className="mb-8 mt-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Left section: Title + Welcome text */}
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                Dashboard
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Welcome back, {user.name}!
+              </p>
+            </div>
+
+            {/* Right section: Button */}
+            <button
+              onClick={() => printStockSheet(products)}
+              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 px-4 py-2 rounded-lg shadow-sm transition-colors"
+            >
+              <Printer size={18} />
+              Print Stock Sheet
+            </button>
+          </div>
         </div>
+
 
         {/* Quick Links Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

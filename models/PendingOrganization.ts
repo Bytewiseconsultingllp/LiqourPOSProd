@@ -4,6 +4,17 @@ export interface IPendingOrganization {
   _id: string;
   organizationName: string;
   email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  gstNumber?: string;
+  licenseNumber?: string;
+  fssaiNumber?: string;
+  panNumber?: string;
+  website?: string;
   adminName: string;
   hashedPassword: string;
   subdomain?: string;
@@ -29,6 +40,53 @@ const PendingOrganizationSchema = new Schema<IPendingOrganization>(
         validator: (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
         message: 'Invalid email format',
       },
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    address: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+    },
+    pincode: {
+      type: String,
+      trim: true,
+    },
+    country: {
+      type: String,
+      trim: true,
+      default: 'India',
+    },
+    gstNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    licenseNumber: {
+      type: String,
+      trim: true,
+    },
+    fssaiNumber: {
+      type: String,
+      trim: true,
+    },
+    panNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    website: {
+      type: String,
+      trim: true,
     },
     adminName: {
       type: String,

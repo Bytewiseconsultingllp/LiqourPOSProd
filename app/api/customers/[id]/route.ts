@@ -30,7 +30,7 @@ function getUserFromToken(request: NextRequest): any {
   const token = authHeader.substring(7);
   const { verifyAccessToken } = require('@/lib/auth');
   const payload = verifyAccessToken(token);
-  
+
   if (!payload) {
     throw new Error('Invalid token');
   }
@@ -94,7 +94,7 @@ export async function PUT(
     });
   } catch (error: any) {
     console.error('Error updating customer:', error);
-    
+
     if (error.message.includes('token') || error.message.includes('authorization')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -155,7 +155,7 @@ export async function DELETE(
     });
   } catch (error: any) {
     console.error('Error deleting customer:', error);
-    
+
     if (error.message.includes('token') || error.message.includes('authorization')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -165,4 +165,35 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+
+  const user = getUserFromToken(request);
+
+  // Validate inpu
+
+  // Register models first
+  registerAllModels();
+
+  // Get tenant connection
+  const tenantConnection = await getTenantConnection(user.organizationId);
+  const Customer = getTenantModel(tenantConnection, 'Customer');
+
+  // Check if customer exists
+  const customer = await Customer.findOne({
+    _id: params.id,
+    organizationId: user.organizationId,
+  });
+
+
+  return NextResponse.json({
+    success: true,
+    data: customer,
+  });
+
 }

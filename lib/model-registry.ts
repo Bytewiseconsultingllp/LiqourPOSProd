@@ -736,6 +736,42 @@ ExpenseSchema.index({ organizationId: 1, expenseDate: -1 });
 ExpenseSchema.index({ paymentMode: 1 });
 
 /**
+ * OrgDetails Model Schema (Organization Details with QR Codes)
+ */
+const QRCodeSubSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    imageBase64: { type: String, required: true },
+    isDefault: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
+const OrgDetailsSchema = new Schema(
+  {
+    organizationId: { type: String, required: true, unique: true, index: true },
+    name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true },
+    phone: { type: String, trim: true },
+    address: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    pincode: { type: String, trim: true },
+    country: { type: String, trim: true, default: 'India' },
+    gstNumber: { type: String, trim: true, uppercase: true },
+    licenseNumber: { type: String, trim: true },
+    fssaiNumber: { type: String, trim: true },
+    panNumber: { type: String, trim: true, uppercase: true },
+    website: { type: String, trim: true },
+    qrCodes: [QRCodeSubSchema],
+  },
+  { timestamps: true }
+);
+
+OrgDetailsSchema.index({ organizationId: 1 });
+OrgDetailsSchema.index({ 'qrCodes.isDefault': 1 });
+
+/**
  * Register all schemas
  * This should be called once at application startup
  * Safe to call multiple times - will only register once
@@ -757,8 +793,9 @@ export function registerAllModels() {
   registerModelSchema('VendorStock', VendorStockSchema);
   registerModelSchema('ExpenseCategory', ExpenseCategorySchema);
   registerModelSchema('Expense', ExpenseSchema);
+  registerModelSchema('OrgDetails', OrgDetailsSchema);
   
-  console.log('✅ All 11 model schemas registered');
+  console.log('✅ All 12 model schemas registered');
 }
 
 // Export schemas for type definitions

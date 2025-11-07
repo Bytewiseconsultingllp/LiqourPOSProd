@@ -20,6 +20,7 @@ export default function SalesManagementPage() {
   const [editFormData, setEditFormData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   const [promotions, setPromotions] = useState<any[]>([]);
+  const [customerCategory, setCustomerCategory] = useState<string>('');
 
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
@@ -56,28 +57,14 @@ export default function SalesManagementPage() {
     }));
   };
 
-  const handlePaymentModeChange = (mode: 'Cash' | 'Online' | 'Credit' | 'Mixed') => {
-    // If switching to single mode, auto-distribute total to that field and zero others
-    const total = Number(editFormData.totalAmount) || 0;
-    if (mode === 'Cash') {
-      setEditFormData((prev: any) => ({
-        ...prev,
-        payment: { mode, cashAmount: total, onlineAmount: 0, creditAmount: 0 },
-      }));
-    } else if (mode === 'Online') {
-      setEditFormData((prev: any) => ({
-        ...prev,
-        payment: { mode, cashAmount: 0, onlineAmount: total, creditAmount: 0 },
-      }));
-    } else if (mode === 'Credit') {
-      setEditFormData((prev: any) => ({
-        ...prev,
-        payment: { mode, cashAmount: 0, onlineAmount: 0, creditAmount: total },
-      }));
-    } else {
-      // Mixed: preserve current values
-      setPaymentField('mode', mode);
-    }
+  // Auto-calculate payment mode based on amounts
+  const calculatePaymentMode = (cash: number, online: number, credit: number): 'Cash' | 'Online' | 'Credit' | 'Mixed' => {
+    const hasMultiple = [cash > 0, online > 0, credit > 0].filter(Boolean).length > 1;
+    if (hasMultiple) return 'Mixed';
+    if (cash > 0) return 'Cash';
+    if (online > 0) return 'Cash';
+    if (credit > 0) return 'Credit';
+    return 'Cash';
   };
 
   const fetchBills = async (token: string) => {
@@ -110,7 +97,7 @@ export default function SalesManagementPage() {
     setShowViewModal(true);
   };
 
-  const handleEditBill = (bill: IBill) => {
+  const handleEditBill = async (bill: IBill) => {
     setSelectedBill(bill);
     setEditFormData({
       items: bill.items.map(item => ({
@@ -130,7 +117,7 @@ export default function SalesManagementPage() {
       customerType: bill.customerType,
       customerId: bill.customerId,
       payment: {
-        mode: bill.payment?.mode || 'Cash',
+        mode: bill.payment?.mode || 'Mixed',
         cashAmount: bill.payment?.cashAmount ?? bill.payment?.cashAmount ?? 0,
         onlineAmount: bill.payment?.onlineAmount ?? bill.payment?.onlineAmount ?? 0,
         creditAmount: bill.payment?.creditAmount ?? bill.payment?.creditAmount ?? 0,
@@ -144,6 +131,31 @@ export default function SalesManagementPage() {
       totalDiscountAmount: bill.totalDiscountAmount || 0,
       totalAmount: bill.totalAmount || 0,
     });
+
+    // Fetch customer category if customerId exists
+    if (bill.customerId) {
+      const accessToken = localStorage.getItem('accessToken');
+      if (accessToken) {
+        try {
+          const response = await fetch(`/api/customers/${bill.customerId}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            console.log("customerTyp", data.data?.type)
+            setCustomerCategory(data.data?.type || 'Walk-In');
+          } else {
+            setCustomerCategory('Walk-In');
+          }
+        } catch (err) {
+          console.error('Failed to fetch customer details:', err);
+          setCustomerCategory('Walk-In');
+        }
+      }
+    } else {
+      setCustomerCategory('Walk-In');
+    }
+
     setShowEditModal(true);
   };
 
@@ -208,6 +220,7 @@ export default function SalesManagementPage() {
 
     setSubmitting(true);
     setError('');
+    setPaymentField('mode', selectedBill.payment.mode);
 
     try {
       const response = await fetch(`/api/bills/${selectedBill._id}`, {
@@ -759,92 +772,84 @@ export default function SalesManagementPage() {
               {/* PAYMENT DETAILS */}
               {(() => {
                 const total = Number(editFormData.totalAmount) || 0;
-                const customerSaved = Boolean(editFormData.customerId);
                 const p = editFormData.payment || {};
                 const cash = Number(p.cashAmount ?? 0);
                 const online = Number(p.onlineAmount ?? 0);
                 const credit = Number(p.creditAmount ?? 0);
                 const sum = Number((cash + online + credit).toFixed(2));
-                const mode: 'Cash' | 'Online' | 'Credit' = p.mode || 'Cash';
-                const sumMatches = mode === 'Credit' ? sum === total :
-                  mode === 'Cash' ? cash === total :
-                    mode === 'Online' ? online === total : true
+                const sumMatches = Math.abs(sum - total) < 0.01; // Allow small floating point differences
 
-                const creditAllowed = customerSaved; // only saved customers can use credit
+                // Credit is allowed for Retail, B2B, and Wholesale customers only
+                const creditAllowed = ['Retail', 'B2B', 'Wholesale'].includes(customerCategory);
+
+                // Auto-calculate mode based on amounts
+                
+                  
+                
 
                 // expose validation on the component for disabling submit
-                (window as any).__paymentSumValid = sumMatches && (mode !== 'Credit' || creditAllowed);
+                (window as any).__paymentSumValid = sumMatches && (credit === 0 || creditAllowed);
 
                 return (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold mb-3">Payment</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Mode</label>
-                        <select
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                          value={mode}
-                          onChange={(e) => handlePaymentModeChange(e.target.value as any)}
-                        >
-                          <option value="Cash">Cash</option>
-                          <option value="Online">Online</option>
-                          <option value="Credit" disabled={!creditAllowed}>Credit {creditAllowed ? '' : '(saved customer only)'}
-                          </option>
-                        </select>
-                        {!creditAllowed && mode === 'Credit' && (
-                          <p className="text-xs text-red-600 mt-1">Credit is only allowed for saved customers.</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Cash (₹)</label>
+                        <Input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right"
+                          min={0}
+                          step="0.01"
+                          value={cash}
+                          onChange={(e) => setPaymentField('cashAmount', parseFloat(e.target.value || '0'))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Online (₹)</label>
+                        <Input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right"
+                          min={0}
+                          step="0.01"
+                          value={online}
+                          onChange={(e) => setPaymentField('onlineAmount', parseFloat(e.target.value || '0'))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Credit (₹)
+                          {!creditAllowed && <span className="text-xs text-red-600 ml-1">(Not allowed for {customerCategory || 'Walk-In'})</span>}
+                        </label>
+                        <Input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          min={0}
+                          step="0.01"
+                          value={credit}
+                          onChange={(e) => setPaymentField('creditAmount', parseFloat(e.target.value || '0'))}
+                          disabled={!creditAllowed}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="text-sm">
+                        <span className="text-gray-600">Payment Mode:</span>
+                        <span className="ml-2 font-semibold text-blue-600">{selectedBill.payment?.mode || 'Cash'}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-gray-600">Sum:</span>
+                        <span className={`ml-2 font-semibold ${sumMatches ? 'text-green-700' : 'text-red-600'}`}>₹{sum.toFixed(2)}</span>
+                        <span className="ml-3 text-gray-600">/ Total:</span>
+                        <span className="ml-2 font-semibold">₹{total.toFixed(2)}</span>
+                        {!sumMatches && (
+                          <span className="ml-3 text-red-600 text-xs">(Amounts do not match total)</span>
                         )}
                       </div>
-                      {(mode === 'Cash' || mode === 'Credit') && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Cash (₹)</label>
-                          <Input
-                            type="number"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right"
-                            min={0}
-                            step="0.01"
-                            value={cash}
-                            onChange={(e) => setPaymentField('cashAmount', parseFloat(e.target.value || '0'))}
-                          />
-                        </div>
-                      )}
-                      {(mode === 'Online' || mode === 'Credit') && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Online (₹)</label>
-                          <Input
-                            type="number"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right"
-                            min={0}
-                            step="0.01"
-                            value={online}
-                            onChange={(e) => setPaymentField('onlineAmount', parseFloat(e.target.value || '0'))}
-                          />
-                        </div>
-                      )}
-                      {(mode === 'Credit') && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Credit (₹)</label>
-                          <Input
-                            type="number"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right"
-                            min={0}
-                            step="0.01"
-                            value={credit}
-                            onChange={(e) => setPaymentField('creditAmount', parseFloat(e.target.value || '0'))}
-                            disabled={!creditAllowed}
-                          />
-                        </div>
-                      )}
                     </div>
-                    <div className="mt-2 text-sm">
-                      <span className="text-gray-600">Sum:</span>
-                      <span className={`ml-2 font-semibold ${sumMatches ? 'text-green-700' : 'text-red-600'}`}>₹{sum.toFixed(2)}</span>
-                      <span className="ml-3 text-gray-600">/ Total:</span>
-                      <span className="ml-2 font-semibold">₹{total.toFixed(2)}</span>
-                      {!sumMatches && (
-                        <span className="ml-3 text-red-600">(Amounts do not match total)</span>
-                      )}
-                    </div>
+                    {!creditAllowed && credit > 0 && (
+                      <p className="text-xs text-red-600 mt-2">⚠️ Credit payment is only allowed for Retail, B2B, and Wholesale customers.</p>
+                    )}
                   </div>
                 );
               })()}

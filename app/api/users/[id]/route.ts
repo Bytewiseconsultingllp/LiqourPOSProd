@@ -11,6 +11,8 @@ const updateUserSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().min(8).optional(),
   role: z.enum(['org_admin', 'admin', 'manager', 'sales', 'accountant', 'tax_officer']).optional(),
+  isEmployee: z.boolean().optional(),
+  salary: z.number().min(0).optional(),
 });
 
 /**
@@ -62,18 +64,20 @@ export async function PUT(
       );
     }
 
-    const updateData: any = {};
+    // Build update document with explicit $set/$unset
+    const set: any = {};
+    const unset: any = {};
 
     if (validation.data.name) {
-      updateData.name = validation.data.name;
+      set.name = validation.data.name;
     }
 
     if (validation.data.email) {
-      updateData.email = normalizeEmail(validation.data.email);
+      set.email = normalizeEmail(validation.data.email);
     }
 
     if (validation.data.password) {
-      updateData.password = await hashPassword(validation.data.password);
+      set.password = await hashPassword(validation.data.password);
     }
 
     if (validation.data.role) {
@@ -84,7 +88,21 @@ export async function PUT(
           { status: 403 }
         );
       }
-      updateData.role = validation.data.role;
+      set.role = validation.data.role;
+    }
+
+    if (validation.data.isEmployee !== undefined) {
+      set.isEmployee = validation.data.isEmployee;
+      if (!validation.data.isEmployee) {
+        unset.salary = '';
+      }
+    }
+
+    if (validation.data.salary !== undefined) {
+      // Only set salary if employee
+      if (validation.data.isEmployee !== false) {
+        set.salary = Number(validation.data.salary);
+      }
     }
 
     // Connect to main database
@@ -124,10 +142,12 @@ export async function PUT(
       organizationId: user.organizationId,
     });
 
+    const updateDoc = Object.keys(unset).length > 0 ? { $set: set, $unset: unset } : { $set: set };
+
     if (tenantUser) {
       await TenantUser.findByIdAndUpdate(
         tenantUser._id,
-        updateData,
+        updateDoc,
         { new: true, runValidators: true }
       );
       console.log(`✅ User updated in tenant database: ${existingUser.email}`);
@@ -142,7 +162,7 @@ export async function PUT(
     await connectMain();
     const updatedUserMain = await UserMain.findByIdAndUpdate(
       params.id,
-      updateData,
+      updateDoc,
       { new: true, runValidators: true }
     ).select('-password -refreshToken -passwordResetToken');
 
