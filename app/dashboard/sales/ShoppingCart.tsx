@@ -61,11 +61,11 @@ export function ShoppingCart({
     : subtotal;
 
   // Calculate total discount (item + bill + promotion)
-  const totalDiscount = itemDiscounts + billDiscount + promotionDiscount;
+  const totalDiscount = itemDiscounts + billDiscount ;
   const totalDiscountPercentage = subtotal > 0 ? (totalDiscount / subtotal) * 100 : 0;
   
   // Calculate remaining discount allowed for bill discount
-  const remainingDiscountAllowed = Math.max(0, maxAllowedDiscount - itemDiscounts - promotionDiscount);
+  const remainingDiscountAllowed = Math.max(0, maxAllowedDiscount - itemDiscounts );
 
   // Calculate available credit for customer
   const availableCredit = customer && customer._id !== "walk-in"
@@ -160,7 +160,7 @@ export function ShoppingCart({
       };
 
       await onComplete(payment);
-      toast.success("Sale completed successfully!");
+      // toast.success("Sale completed successfully!");
 
       // Reset payment fields
       setBillDiscount(0);

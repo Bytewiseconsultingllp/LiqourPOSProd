@@ -89,10 +89,11 @@ export function CustomerSelector({ customers, selectedCustomer, onSelectCustomer
                       )}
                     />
                     <div className="flex flex-col">
-                      <span>{customer.name}</span>
+                      <span>{customer.name}<span className="text-xs text-muted-foreground">-{customer.type}</span></span>
                       {customer.contactInfo.phone && (
                         <span className="text-xs text-muted-foreground">{customer.contactInfo.phone}</span>
                       )}
+                      
                     </div>
                   </CommandItem>
                 ))}

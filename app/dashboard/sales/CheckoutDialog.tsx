@@ -68,7 +68,7 @@ export function CheckoutDialog({ open, onClose, items, customer, onComplete }: C
     };
 
     onComplete(payment);
-    toast.success('Sale completed successfully!');
+    // toast.success('Sale completed successfully!');
     onClose();
   };
 

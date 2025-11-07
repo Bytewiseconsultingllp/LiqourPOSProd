@@ -11,7 +11,7 @@ interface ProductFiltersProps {
 }
 
 const volumes = [60, 90, 150, 180, 275, 330, 375, 500, 650, 750, 1000];
-const categories = ['whisky', 'rum', 'vodka', 'wine', 'brandy', 'gin', 'beer', 'tequila'];
+const categories = ['Whisky', 'Rum', 'Vodka', 'Wine', 'Brandy', 'Gin', 'Beer', 'Tequila'];
 
 export function ProductFilters({
   selectedVolumes,

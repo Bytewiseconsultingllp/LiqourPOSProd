@@ -329,8 +329,26 @@ const Index = () => {
       // Reset cart and state
       setCartItems([]);
       // Auto-select walk-in customer after sale
-      const walkInCustomer = customers.find(c => c._id === "walk-in");
-      setSelectedCustomer(walkInCustomer || null);
+      const walkInCustomer = customers.find(c => c._id === "walk-in" || c.name === "Walk-in Customer");
+      if (walkInCustomer) {
+        setSelectedCustomer(walkInCustomer);
+      } else {
+        // Create walk-in customer if not found
+        const walkIn: Customer = {
+          _id: 'walk-in',
+          name: 'Walk-in Customer',
+          type: 'Walk-In',
+          contactInfo: { phone: '', email: '', address: '' },
+          creditLimit: 0,
+          outstandingBalance: 0,
+          walletBalance: 0,
+          isActive: true,
+          organizationId: '',
+          createdAt: new Date().toISOString(),
+          maxDiscountPercentage: 100,
+        };
+        setSelectedCustomer(walkIn);
+      }
 
       // Refresh recent sales
       fetchRecentSales();
@@ -577,197 +595,197 @@ const Index = () => {
     }
   };
 
- return (
-  <div className="min-h-screen bg-background">
-    {/* Wider Container */}
-    <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-10 py-4">
-      {/* Customer Selection Section */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <CustomerSelector
-          customers={customers}
-          selectedCustomer={selectedCustomer}
-          onSelectCustomer={setSelectedCustomer}
-        />
-
-        {/* Date input — visible only when customer is not Walk-In */}
-        {selectedCustomer && selectedCustomer.type !== "Walk-In" && (
-          <Input
-            type="date"
-            value={billDate.slice(0, 10)}
-            onChange={(e) => {
-              const selectedDate = new Date(e.target.value);
-              selectedDate.setHours(4, 5, 0, 0);
-              setBillDate(selectedDate.toISOString());
-            }}
-            min={
-              products.at(0)?.morningStockLastUpdatedDate
-                ? products.at(0)?.morningStockLastUpdatedDate?.slice(0, 10)
-                : new Date().toISOString().slice(0, 10)
-            }
-            className="w-full sm:w-auto"
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Wider Container */}
+      <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-10 py-4">
+        {/* Customer Selection Section */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <CustomerSelector
+            customers={customers}
+            selectedCustomer={selectedCustomer}
+            onSelectCustomer={setSelectedCustomer}
           />
-        )}
 
-        {/* Scanner + Credit Payment */}
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <div
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-              scannerActive
-                ? "bg-green-50 border-green-200 text-green-700"
-                : "bg-gray-50 border-gray-200 text-gray-500"
-            }`}
-          >
-            <Scan className={`h-4 w-4 ${scannerActive ? "animate-pulse" : ""}`} />
-            <span className="text-sm font-medium">
-              Scanner: {scannerActive ? "Active" : "Sleeping"}
-            </span>
-          </div>
-
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setCreditPaymentDialogOpen(true)}
-            disabled={!selectedCustomer || selectedCustomer._id === "walk-in"}
-          >
-            <CreditCard className="h-4 w-4" />
-            Record Credit Payment
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex flex-col md:flex-row flex-1 gap-6 h-[100dvh] overflow-hidden">
-        {/* Left Side: Product Section */}
-        <div className="flex flex-col flex-[0.65] min-w-0 overflow-hidden">
-          {/* Customer Info */}
-          {selectedCustomer && (
-            <Card className="p-4 mb-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Customer</p>
-                    <p className="font-semibold">{selectedCustomer.name}</p>
-                  </div>
-                </div>
-
-                {selectedCustomer.contactInfo.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Phone</p>
-                      <p className="font-semibold">
-                        {selectedCustomer.contactInfo.phone}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {selectedCustomer._id !== "walk-in" &&
-                  selectedCustomer.type !== "Walk-In" && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <CreditCardIcon className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            Due Balance
-                          </p>
-                          <p className="font-semibold text-primary">
-                            ₹{selectedCustomer.outstandingBalance ?? 0}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Wallet className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            Credit Balance
-                          </p>
-                          <p className="font-semibold text-primary">
-                            ₹
-                            {selectedCustomer.creditLimit -
-                              (selectedCustomer.outstandingBalance ?? 0) || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </>
-                  )}
-              </div>
-            </Card>
+          {/* Date input — visible only when customer is not Walk-In */}
+          {selectedCustomer && selectedCustomer.type !== "Walk-In" && (
+            <Input
+              type="date"
+              value={billDate.slice(0, 10)}
+              onChange={(e) => {
+                const selectedDate = new Date(e.target.value);
+                selectedDate.setHours(4, 5, 0, 0);
+                setBillDate(selectedDate.toISOString());
+              }}
+              min={
+                products.at(0)?.morningStockLastUpdatedDate
+                  ? products.at(0)?.morningStockLastUpdatedDate?.slice(0, 10)
+                  : new Date().toISOString().slice(0, 10)
+              }
+              max={(new Date()).toDateString().split('T')[0]}
+              className="w-full sm:w-auto"
+            />
           )}
 
-          {/* Filters */}
-          <div className="flex-shrink-0 space-y-4">
-            <ProductSearch
-              products={products}
-              onSelectProduct={handleProductSelect}
-            />
-            <ProductFilters
-              selectedVolumes={selectedVolumes}
-              selectedCategories={selectedCategories}
-              onVolumeToggle={handleVolumeToggle}
-              onCategoryToggle={handleCategoryToggle}
-              onClearFilters={handleClearFilters}
-            />
-          </div>
+          {/* Scanner + Credit Payment */}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${scannerActive
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "bg-gray-50 border-gray-200 text-gray-500"
+                }`}
+            >
+              <Scan className={`h-4 w-4 ${scannerActive ? "animate-pulse" : ""}`} />
+              <span className="text-sm font-medium">
+                Scanner: {scannerActive ? "Active" : "Sleeping"}
+              </span>
+            </div>
 
-          {/* Product List */}
-          <div className="flex-1 overflow-y-auto pr-1 mt-2">
-            {productsLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">
-                  Loading products...
-                </span>
-              </div>
-            ) : productsError ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {productsError}
-                  <button
-                    onClick={refetchProducts}
-                    className="ml-2 underline font-semibold"
-                  >
-                    Retry
-                  </button>
-                </AlertDescription>
-              </Alert>
-            ) : filteredProducts.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <p>No products found</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                {filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product._id}
-                    product={product}
-                    onSelect={handleProductSelect}
-                  />
-                ))}
-              </div>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setCreditPaymentDialogOpen(true)}
+              disabled={!selectedCustomer || selectedCustomer._id === "walk-in"}
+            >
+              <CreditCard className="h-4 w-4" />
+              Record Credit Payment
+            </Button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex flex-col md:flex-row flex-1 gap-6 h-[100dvh] overflow-hidden">
+          {/* Left Side: Product Section */}
+          <div className="flex flex-col flex-[0.65] min-w-0 overflow-hidden">
+            {/* Customer Info */}
+            {selectedCustomer && (
+              <Card className="p-4 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Customer</p>
+                      <p className="font-semibold">{selectedCustomer.name}</p>
+                    </div>
+                  </div>
+
+                  {selectedCustomer.contactInfo.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Phone</p>
+                        <p className="font-semibold">
+                          {selectedCustomer.contactInfo.phone}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedCustomer._id !== "walk-in" &&
+                    selectedCustomer.type !== "Walk-In" && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <CreditCardIcon className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Due Balance
+                            </p>
+                            <p className="font-semibold text-primary">
+                              ₹{selectedCustomer.outstandingBalance ?? 0}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Credit Balance
+                            </p>
+                            <p className="font-semibold text-primary">
+                              ₹
+                              {selectedCustomer.creditLimit -
+                                (selectedCustomer.outstandingBalance ?? 0) || 0}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                </div>
+              </Card>
             )}
+
+            {/* Filters */}
+            <div className="flex-shrink-0 space-y-4">
+              <ProductSearch
+                products={products}
+                onSelectProduct={handleProductSelect}
+              />
+              <ProductFilters
+                selectedVolumes={selectedVolumes}
+                selectedCategories={selectedCategories}
+                onVolumeToggle={handleVolumeToggle}
+                onCategoryToggle={handleCategoryToggle}
+                onClearFilters={handleClearFilters}
+              />
+            </div>
+
+            {/* Product List */}
+            <div className="flex-1 overflow-y-auto pr-1 mt-2">
+              {productsLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">
+                    Loading products...
+                  </span>
+                </div>
+              ) : productsError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {productsError}
+                    <button
+                      onClick={refetchProducts}
+                      className="ml-2 underline font-semibold"
+                    >
+                      Retry
+                    </button>
+                  </AlertDescription>
+                </Alert>
+              ) : filteredProducts.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>No products found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                  {filteredProducts.map((product) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      onSelect={handleProductSelect}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Side: Shopping Cart */}
+          <div className="flex flex-col flex-[0.35] h-full overflow-hidden mt-4 md:mt-0">
+            <div className="sticky top-0 flex-1 overflow-y-auto">
+              <ShoppingCart
+                items={cartItems}
+                customer={selectedCustomer}
+                onRemoveItem={handleRemoveItem}
+                onEditItem={handleEditItem}
+                onComplete={handleCompleteSale}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Right Side: Shopping Cart */}
-        <div className="flex flex-col flex-[0.35] h-full overflow-hidden mt-4 md:mt-0">
-          <div className="sticky top-0 flex-1 overflow-y-auto">
-            <ShoppingCart
-              items={cartItems}
-              customer={selectedCustomer}
-              onRemoveItem={handleRemoveItem}
-              onEditItem={handleEditItem}
-              onComplete={handleCompleteSale}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Sales Table (Unchanged) */}
-     <div className="mt-8">
+        {/* Recent Sales Table (Unchanged) */}
+        <div className="mt-8">
           <Card className="p-6">
             <h2 className="text-2xl font-bold mb-4">Recent Sales</h2>
             {salesLoading ? (
@@ -869,48 +887,48 @@ const Index = () => {
         </div>
       </div>
 
-    {/* Dialogs */}
-    <QuantityDialog
-      product={selectedProduct}
-      customer={selectedCustomer}
-      open={quantityDialogOpen}
-      onClose={() => setQuantityDialogOpen(false)}
-      onConfirm={handleQuantityConfirm}
-      initialQuantity={editingItem?.quantity}
-      initialDiscount={editingItem?.itemDiscountAmount}
-    />
-
-    {selectedCustomer && (
-      <CollectPaymentDialog
-        customer={{
-          _id: selectedCustomer._id,
-          name: selectedCustomer.name,
-          outstandingBalance: (selectedCustomer as any).outstandingBalance ?? 0,
-        }}
-        open={creditPaymentDialogOpen}
-        onClose={() => setCreditPaymentDialogOpen(false)}
-        onSuccess={handlePaymentSuccess}
+      {/* Dialogs */}
+      <QuantityDialog
+        product={selectedProduct}
+        customer={selectedCustomer}
+        open={quantityDialogOpen}
+        onClose={() => setQuantityDialogOpen(false)}
+        onConfirm={handleQuantityConfirm}
+        initialQuantity={editingItem?.quantity}
+        initialDiscount={editingItem?.itemDiscountAmount}
       />
-    )}
 
-    {/* Bill Viewer */}
-    {viewingBill && (
-      <ThermalBillPrint
-        billData={viewingBill}
-        billType={viewBillType}
-        onClose={handleCloseBillView}
-      />
-    )}
+      {selectedCustomer && (
+        <CollectPaymentDialog
+          customer={{
+            _id: selectedCustomer._id,
+            name: selectedCustomer.name,
+            outstandingBalance: (selectedCustomer as any).outstandingBalance ?? 0,
+          }}
+          open={creditPaymentDialogOpen}
+          onClose={() => setCreditPaymentDialogOpen(false)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
 
-    {/* Sub-Bills Viewer */}
-    {viewingSubBills && (
-      <SubBillsViewer
-        sale={viewingSubBills}
-        onClose={handleCloseSubBills}
-      />
-    )}
-  </div>
-);
+      {/* Bill Viewer */}
+      {viewingBill && (
+        <ThermalBillPrint
+          billData={viewingBill}
+          billType={viewBillType}
+          onClose={handleCloseBillView}
+        />
+      )}
+
+      {/* Sub-Bills Viewer */}
+      {viewingSubBills && (
+        <SubBillsViewer
+          sale={viewingSubBills}
+          onClose={handleCloseSubBills}
+        />
+      )}
+    </div>
+  );
 
 
 };
