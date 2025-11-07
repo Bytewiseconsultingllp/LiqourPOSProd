@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/app/dashboard/components/ui/table';
 import { apiFetch } from '@/lib/api-client';
-import { Calendar, Loader2 } from 'lucide-react';
+import { Calendar, Loader2, Eye } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -43,6 +43,7 @@ export function CustomerSalesDialog({
   const [toDate, setToDate] = useState<string>(() => {
     return new Date().toISOString().split('T')[0];
   });
+  const [viewBill, setViewBill] = useState<any | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -168,13 +169,14 @@ export function CustomerSalesDialog({
                       <TableHead className="text-right">Subtotal</TableHead>
                       <TableHead className="text-right">Discount</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {bills.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={6}
+                          colSpan={7}
                           className="text-center py-8 text-muted-foreground"
                         >
                           No bills found for the selected date range
@@ -200,6 +202,11 @@ export function CustomerSalesDialog({
                           </TableCell>
                           <TableCell className="text-right font-semibold">
                             ₹{bill.totalAmount.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" onClick={() => setViewBill(bill)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))
@@ -275,6 +282,52 @@ export function CustomerSalesDialog({
             </div>
           </div>
         </div>
+
+        <Dialog open={!!viewBill} onOpenChange={() => setViewBill(null)}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Bill Items{viewBill?.totalBillId ? ` - ${viewBill.totalBillId}` : ''}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background">
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">MRP/Piece</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(() => {
+                    const items = (viewBill?.items && viewBill.items.length > 0)
+                      ? viewBill.items
+                      : (viewBill?.subBills?.flatMap((sb: any) => sb.items) || []);
+                    if (!items || items.length === 0) {
+                      return (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                            No items found for this bill
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+                    return items.map((item: any, idx: number) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{item.productName}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">₹{item.rate.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{(item.finalAmount ?? item.subTotal).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ));
+                  })()}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <div className="flex justify-end pt-4">
           <Button onClick={onClose} variant="outline">

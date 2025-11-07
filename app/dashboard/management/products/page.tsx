@@ -21,6 +21,8 @@ import {
 } from '@/lib/excelTemplates';
 import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Label } from '../../components/ui/label';
 
 
 const ensurePriorityVendorExists = async (): Promise<boolean> => {
@@ -66,6 +68,10 @@ export default function ProductsManagementPage() {
     bottlesPerCaret: '',
     barcodes: [] as Barcode[],
   });
+
+  // Dropdown options
+  const categoryOptions = ['Whisky', 'Rum', 'Vodka', 'Wine', 'Brandy', 'Gin', 'Beer', 'Tequila'];
+  const volumeOptions = [60, 90, 150, 180, 275, 330, 375, 500, 650, 750, 1000];
 
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
@@ -467,68 +473,104 @@ export default function ProductsManagementPage() {
               }
               className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4"
             >
-              <Input
-                placeholder="Product Name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                required
-              />
-              <Input
-                placeholder="Brand"
-                value={formData.brand}
-                onChange={(e) =>
-                  setFormData({ ...formData, brand: e.target.value })
-                }
-              />
-              <Input
-                placeholder="Category"
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-              />
-              <Input
-                placeholder="SKU"
-                value={formData.sku}
-                onChange={(e) =>
-                  setFormData({ ...formData, sku: e.target.value })
-                }
-              />
-              <Input
-                placeholder="Price per Unit"
-                type="number"
-                value={formData.pricePerUnit}
-                onChange={(e) =>
-                  setFormData({ ...formData, pricePerUnit: e.target.value })
-                }
-                required
-              />
-              <Input
-                placeholder="Volume (ML)"
-                type="number"
-                value={formData.volumeML}
-                onChange={(e) =>
-                  setFormData({ ...formData, volumeML: e.target.value })
-                }
-              />
-              <Input
-                placeholder="Current Stock"
-                type="number"
-                value={formData.currentStock}
-                onChange={(e) =>
-                  setFormData({ ...formData, currentStock: e.target.value })
-                }
-              />
-              <Input
-                placeholder="Reorder Level"
-                type="number"
-                value={formData.reorderLevel}
-                onChange={(e) =>
-                  setFormData({ ...formData, reorderLevel: e.target.value })
-                }
-              />
+              <div className="space-y-1">
+                <Label>Product Name</Label>
+                <Input
+                  placeholder="Product Name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Brand</Label>
+                <Input
+                  placeholder="Brand"
+                  value={formData.brand}
+                  onChange={(e) =>
+                    setFormData({ ...formData, brand: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(val) => setFormData({ ...formData, category: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoryOptions.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>SKU</Label>
+                <Input
+                  placeholder="SKU"
+                  value={formData.sku}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sku: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Price per Unit</Label>
+                <Input
+                  placeholder="Price per Unit"
+                  type="number"
+                  value={formData.pricePerUnit}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pricePerUnit: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Volume (ML)</Label>
+                <Select
+                  value={formData.volumeML}
+                  onValueChange={(val) => setFormData({ ...formData, volumeML: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select volume" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {volumeOptions.map((v) => (
+                      <SelectItem key={v} value={String(v)}>{v} ML</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Current Stock</Label>
+                <Input
+                  disabled={showCreateModal ? false : true}
+                  placeholder="Current Stock"
+                  type="number"
+                  value={formData.currentStock}
+                  onChange={(e) =>
+                    setFormData({ ...formData, currentStock: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Reorder Level</Label>
+                <Input
+                  placeholder="Reorder Level"
+                  type="number"
+                  value={formData.reorderLevel}
+                  onChange={(e) =>
+                    setFormData({ ...formData, reorderLevel: e.target.value })
+                  }
+                />
+              </div>
 
               {/* 🆕 Barcode Upload & Preview */}
               <div className="md:col-span-2 mt-2">

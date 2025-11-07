@@ -430,21 +430,48 @@ export default function Navbar() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const managementMenuRef = useRef<HTMLDivElement>(null);
 
+  const loadAuthFromStorage = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      const orgData = localStorage.getItem('organization');
+      setUser(userData ? JSON.parse(userData) : null);
+      setOrganization(orgData ? JSON.parse(orgData) : null);
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    const orgData = localStorage.getItem('organization');
-    if (userData) setUser(JSON.parse(userData));
-    if (orgData) setOrganization(JSON.parse(orgData));
+    loadAuthFromStorage();
+
+    const onFocus = () => loadAuthFromStorage();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'user' || e.key === 'organization' || e.key === 'accessToken' || e.key === 'refreshToken') {
+        loadAuthFromStorage();
+      }
+    };
+    const onAuthChanged = () => loadAuthFromStorage();
+
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('auth-changed', onAuthChanged as EventListener);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('auth-changed', onAuthChanged as EventListener);
+    };
   }, []);
 
   useEffect(() => {
-    if (pathname === '/login' || pathname === '/register' || pathname === '/reset-password')
+    if (pathname === '/login'||pathname==='/' || pathname === '/register' || pathname === '/reset-password')
       setIsLoggingOut(false);
   }, [pathname]);
 
   useEffect(() => {
     setUserMenuOpen(false);
     setManagementMenuOpen(false);
+    // Refresh auth state on route changes (e.g., after login navigation)
+    loadAuthFromStorage();
   }, [pathname]);
 
   useEffect(() => {
@@ -465,7 +492,7 @@ export default function Navbar() {
     setIsLoggingOut(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     localStorage.clear();
-    router.push('/login');
+    router.push('/');
   };
 
   const isActive = (path: string) => pathname === path || pathname?.startsWith(path + '/');
@@ -500,7 +527,7 @@ export default function Navbar() {
       <div className=" mx-auto px-4 sm:px-2 lg:px-4">
         <div className="flex justify-between h-16 items-center">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center space-x-3">
+          <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
               <ShoppingCart className="w-6 h-6 text-white" />
             </div>
@@ -512,9 +539,9 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Nav */}
+          {/* Desktop Nav - only after login */}
           <div className="hidden md:flex items-center space-x-2">
-            {navLinks.map((link) =>
+            {user && navLinks.map((link) =>
               link.submenu ? (
                 <div key={link.name} className="relative" ref={managementMenuRef}>
                   <button
@@ -571,66 +598,73 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* User + Mobile Menu */}
+          {/* User/Auth + Mobile Menu */}
           <div className="flex items-center space-x-4">
-            {/* User Menu */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-semibold">
-                    {user?.name?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                </div>
-                <ChevronDown
-                  className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${
-                    userMenuOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2">
-                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+            {/* Right section: if logged in show user menu, else Login/Sign Up buttons */}
+            {user ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-semibold">
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </span>
                   </div>
-                  <Link
-                    href="/dashboard/profile"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <Users className="w-4 h-4" />
-                    <span>Profile</span>
-                  </Link>
-                  <Link
-                    href="/dashboard/settings"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span>Settings</span>
-                  </Link>
-                  <Link
-                    href="/dashboard/organization-settings"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span>Org Settings</span>
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center space-x-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-full"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              )}
-            </div>
+                  <ChevronDown
+                    className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${
+                      userMenuOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2">
+                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+                    </div>
+                    <Link
+                      href="/dashboard/profile"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Profile</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/organization-settings"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Org Settings</span>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center space-x-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-full"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="hidden md:flex items-center gap-2">
+                <Link href="/login" className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">Login</Link>
+                <Link href="/signup" className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">Sign Up</Link>
+              </div>
+            )}
 
             {/* Mobile Menu Button */}
             <button
@@ -650,7 +684,7 @@ export default function Navbar() {
         } bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700`}
       >
         <div className="px-4 py-3 space-y-1">
-          {navLinks.map((link) =>
+          {user ? navLinks.map((link) =>
             link.submenu ? (
               <div key={link.name}>
                 <button
@@ -706,6 +740,11 @@ export default function Navbar() {
                 <span>{link.name}</span>
               </Link>
             )
+          ) : (
+            <div className="flex flex-col gap-2 py-2">
+              <Link href="/login" onClick={() => setIsOpen(false)} className="px-3 py-3 rounded-md text-center border border-gray-300 hover:bg-gray-100">Login</Link>
+              <Link href="/signup" onClick={() => setIsOpen(false)} className="px-3 py-3 rounded-md text-center bg-blue-600 text-white hover:bg-blue-700">Sign Up</Link>
+            </div>
           )}
         </div>
       </div>

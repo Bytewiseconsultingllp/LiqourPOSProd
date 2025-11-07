@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, Smartphone } from 'lucide-react';
+import heroImage from "@/assets/hero-liquor-pos.jpg";
+import { ArrowRight, BarChart3, Clock, CreditCard, Download, FileText, Package, Shield, Smartphone, TrendingUp, Users, Wine, Zap } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './dashboard/components/ui/card';
+import { Button } from './dashboard/components/ui/button';
 
 export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -10,7 +13,7 @@ export default function Home() {
 
   useEffect(() => {
     console.log('🔍 PWA Install Check Started');
-    
+
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       console.log('✅ App already installed');
@@ -58,106 +61,224 @@ export default function Home() {
     setDeferredPrompt(null);
     setIsInstallable(false);
   };
-
+  const currentYear = new Date().getFullYear();
+  const features = [
+    {
+      icon: Package,
+      title: "Inventory Management",
+      description:
+        "Track stock levels in real-time, automate reordering, and manage multiple locations effortlessly.",
+    },
+    {
+      icon: Users,
+      title: "Customer Management",
+      description:
+        "Build customer profiles, track purchase history, and create personalized loyalty programs.",
+    },
+    {
+      icon: TrendingUp,
+      title: "Sales Analytics",
+      description:
+        "Gain insights with comprehensive reports on sales trends, top products, and performance metrics.",
+    },
+    {
+      icon: Clock,
+      title: "Fast Checkout",
+      description:
+        "Process transactions quickly with barcode scanning, multiple payment methods, and split payments.",
+    },
+    {
+      icon: CreditCard,
+      title: "Payment Processing",
+      description:
+        "Accept all major credit cards, mobile payments, and integrate with popular payment gateways.",
+    },
+    {
+      icon: FileText,
+      title: "Compliance Tools",
+      description:
+        "Built-in age verification, license tracking, and automated compliance reporting for peace of mind.",
+    },
+  ];
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-4xl mx-auto p-8">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-12">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6 text-center">
-            Liquor POS System
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 text-center">
-            Multi-Tenant Point of Sale Solution
-          </p>
+    <>
+      <section id="home" className="relative min-h-screen flex items-center pt-16">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src={heroImage.src}
+            alt="Premium liquor bar"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/90 to-background/70" />
+        </div>
 
-          {/* Install Button */}
-          {!isInstalled && (
-            <div className="mb-8 flex justify-center">
-              <button
-                onClick={handleInstall}
-                className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-              >
-                {isInstallable ? (
-                  <>
-                    <Download className="w-6 h-6" />
-                    Install App
-                  </>
-                ) : (
-                  <>
-                    <Smartphone className="w-6 h-6" />
-                    Install as PWA
-                  </>
-                )}
-              </button>
-            </div>
-          )}
+        {/* Content */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
+              Transform Your Liquor Store with{" "}
+              <span className="text-primary">Smart POS</span>
+            </h1>
+            <p className="text-lg sm:text-xl text-muted-foreground mb-8 leading-relaxed">
+              Streamline inventory, boost sales, and enhance customer experience with our
+              industry-leading point of sale system designed specifically for liquor retailers.
+            </p>
 
-          {isInstalled && (
-            <div className="mb-8 flex justify-center">
-              <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-6 py-3 rounded-lg">
-                <Smartphone className="w-5 h-5" />
-                <span className="font-medium">App Installed ✓</span>
+            {/* CTA Buttons */}
+            {/* <div className="flex flex-col sm:flex-row gap-4 mb-12">
+              <Button size="lg" variant="hero">
+                Start Free Trial
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button size="lg" variant="outline">
+                Watch Demo
+              </Button>
+            </div> */}
+
+            {/* Quick Features */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Zap className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Lightning Fast</p>
+                  <p className="text-sm text-muted-foreground">Quick checkout</p>
+                </div>
               </div>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <div className="bg-blue-50 dark:bg-gray-700 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold text-blue-900 dark:text-blue-300 mb-3">
-                Features
-              </h2>
-              <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-                <li>✓ Multi-tenant architecture</li>
-                <li>✓ MongoDB database</li>
-                <li>✓ TypeScript support</li>
-                <li>✓ Modern UI with Tailwind</li>
-              </ul>
-            </div>
-            
-            <div className="bg-indigo-50 dark:bg-gray-700 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold text-indigo-900 dark:text-indigo-300 mb-3">
-                Tech Stack
-              </h2>
-              <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-                <li>• Next.js 14 (App Router)</li>
-                <li>• TypeScript</li>
-                <li>• Tailwind CSS</li>
-                <li>• MongoDB + Mongoose</li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="mt-8 space-y-4">
-            {/* PWA Info */}
-            {!isInstalled && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2 flex items-center gap-2">
-                  <Smartphone className="w-5 h-5" />
-                  Install as Progressive Web App
-                </h3>
-                <p className="text-sm text-blue-800 dark:text-blue-300 mb-2">
-                  Install this app on your device for:
-                </p>
-                <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1 ml-4">
-                  <li>• Quick access from home screen</li>
-                  <li>• Offline functionality</li>
-                  <li>• Native app-like experience</li>
-                  <li>• Push notifications</li>
-                </ul>
-                <p className="text-xs text-blue-600 dark:text-blue-500 mt-3">
-                  <strong>Note:</strong> If the install button doesn't work, use your browser's menu (⋮) → "Install app" or "Add to Home Screen"
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <BarChart3 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Smart Analytics</p>
+                  <p className="text-sm text-muted-foreground">Real-time insights</p>
+                </div>
               </div>
-            )}
-
-            <div className="text-center">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Configure your MongoDB connection in .env file to get started
-              </p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Secure & Compliant</p>
+                  <p className="text-sm text-muted-foreground">Age verification</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+      <section id="features" className="py-20 bg-muted/50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+              Everything You Need to Succeed
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Powerful features designed specifically for liquor retailers to streamline operations
+              and maximize profits.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <Card key={index} className="border-border hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="p-3 rounded-lg bg-primary/10 w-fit mb-4">
+                      <Icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-foreground">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-muted-foreground">
+                      {feature.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+      <footer className="bg-card border-t border-border py-12">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            {/* Brand */}
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center gap-2 mb-4">
+                <Wine className="h-8 w-8 text-primary" />
+                <span className="text-xl font-bold text-foreground">LiquorPOS</span>
+              </div>
+              <p className="text-muted-foreground mb-4">
+                The leading point of sale system for liquor retailers. Streamline your operations and
+                grow your business with confidence.
+              </p>
+            </div>
+
+            {/* Product */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-4">Product</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#features" className="text-muted-foreground hover:text-primary transition-colors">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors">
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                    Integrations
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                    Updates
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-4">Company</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#about" className="text-muted-foreground hover:text-primary transition-colors">
+                    About
+                  </a>
+                </li>
+                <li>
+                  <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors">
+                    Contact
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                    Privacy
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                    Terms
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t border-border text-center text-muted-foreground">
+            <p>&copy; {currentYear} LiquorPOS. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </>
   );
 }
