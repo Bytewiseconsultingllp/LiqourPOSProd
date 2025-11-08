@@ -458,8 +458,11 @@ const Index = () => {
     return () => clearInterval(checkInactivity);
   }, [lastActivityTime, scannerActive]);
 
-  // Barcode scanner: Wake up on any activity
+  // Barcode scanner: Combined activity tracking and barcode input handling
   useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    let buffer = '';
+
     const handleActivity = () => {
       setLastActivityTime(Date.now());
       if (!scannerActive) {
@@ -468,66 +471,103 @@ const Index = () => {
       }
     };
 
-    // Listen for mouse movement, clicks, and keyboard activity
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-
-    return () => {
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('click', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
+    // Debug: Log ALL keyboard events
+    const debugKeyEvent = (e: KeyboardEvent) => {
+      console.log('⌨️ Key event detected:', {
+        type: e.type,
+        key: e.key,
+        keyCode: e.keyCode,
+        code: e.code,
+        target: (e.target as HTMLElement)?.tagName,
+        scannerActive,
+        bufferLength: buffer.length
+      });
     };
-  }, [scannerActive]);
-
-  // Barcode scanner: Listen for barcode input
-  useEffect(() => {
-    if (!scannerActive) return;
-
-    let timeout: NodeJS.Timeout;
-    let buffer = '';
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Debug log
+      debugKeyEvent(e);
+
+      // Update activity time
+      handleActivity();
+
+      // Only process barcode if scanner is active
+      if (!scannerActive) {
+        console.log('⚠️ Scanner not active, ignoring key');
+        return;
+      }
+
       // Ignore if user is typing in an input field
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        console.log('⚠️ Ignoring key - user typing in input field');
         return;
       }
 
       // Enter key means barcode scan is complete
-      if (e.key === 'Enter' || e.keyCode === 13) {
+      if (e.key === 'Enter' || e.keyCode === 13 || e.code === 'Enter') {
+        console.log('🔑 Enter key detected, buffer:', buffer);
         if (buffer.length > 0) {
           e.preventDefault();
+          e.stopPropagation();
           console.log('📦 Barcode scanned via Enter:', buffer);
-          handleBarcodeScanned(buffer);
+          const scannedBarcode = buffer;
           buffer = '';
           setBarcodeBuffer('');
           clearTimeout(timeout);
+          // Call handleBarcodeScanned after state updates
+          setTimeout(() => handleBarcodeScanned(scannedBarcode), 0);
+        } else {
+          console.log('⚠️ Enter pressed but buffer is empty');
         }
         return;
       }
 
       // Build barcode buffer (only printable characters)
-      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
         buffer += e.key;
         setBarcodeBuffer(buffer);
+        console.log('📝 Building barcode:', buffer);
 
         // Clear buffer after 100ms of no input (barcode scanners are fast)
         clearTimeout(timeout);
         timeout = setTimeout(() => {
-          console.log('⏱️ Barcode buffer timeout, clearing:', buffer);
+          if (buffer.length > 0) {
+            console.log('⏱️ Barcode buffer timeout, clearing:', buffer);
+          }
           buffer = '';
           setBarcodeBuffer('');
         }, 100);
+      } else {
+        console.log('⚠️ Key ignored - not a printable character or modifier pressed');
       }
     };
 
-    console.log('🎯 Barcode scanner activated - listening for keydown events');
-    window.addEventListener('keydown', handleKeyDown);
+    const handleKeyPress = (e: KeyboardEvent) => {
+      console.log('⌨️ KeyPress event:', e.key, e.keyCode);
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      console.log('⌨️ KeyUp event:', e.key, e.keyCode);
+    };
+
+    // Listen for mouse movement, clicks, and keyboard activity
+    console.log('🎯 Barcode scanner system initialized - Scanner Active:', scannerActive);
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+    window.addEventListener('keypress', handleKeyPress, true);
+    window.addEventListener('keyup', handleKeyUp, true);
 
     return () => {
-      console.log('🛑 Barcode scanner deactivated');
-      window.removeEventListener('keydown', handleKeyDown);
+      console.log('🛑 Barcode scanner system stopped');
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keypress', handleKeyPress, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
       clearTimeout(timeout);
     };
   }, [scannerActive, products]);
