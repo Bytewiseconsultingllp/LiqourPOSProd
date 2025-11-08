@@ -485,8 +485,9 @@ const Index = () => {
     if (!scannerActive) return;
 
     let timeout: NodeJS.Timeout;
+    let buffer = '';
 
-    const handleKeyPress = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input field
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
@@ -494,44 +495,78 @@ const Index = () => {
       }
 
       // Enter key means barcode scan is complete
-      if (e.key === 'Enter' && barcodeBuffer.length > 0) {
-        e.preventDefault();
-        handleBarcodeScanned(barcodeBuffer);
-        setBarcodeBuffer('');
-        clearTimeout(timeout);
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        if (buffer.length > 0) {
+          e.preventDefault();
+          console.log('📦 Barcode scanned via Enter:', buffer);
+          handleBarcodeScanned(buffer);
+          buffer = '';
+          setBarcodeBuffer('');
+          clearTimeout(timeout);
+        }
         return;
       }
 
-      // Build barcode buffer
-      if (e.key.length === 1) {
-        setBarcodeBuffer(prev => prev + e.key);
+      // Build barcode buffer (only printable characters)
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        buffer += e.key;
+        setBarcodeBuffer(buffer);
 
         // Clear buffer after 100ms of no input (barcode scanners are fast)
         clearTimeout(timeout);
         timeout = setTimeout(() => {
+          console.log('⏱️ Barcode buffer timeout, clearing:', buffer);
+          buffer = '';
           setBarcodeBuffer('');
         }, 100);
       }
     };
 
-    window.addEventListener('keypress', handleKeyPress);
+    console.log('🎯 Barcode scanner activated - listening for keydown events');
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
-      window.removeEventListener('keypress', handleKeyPress);
+      console.log('🛑 Barcode scanner deactivated');
+      window.removeEventListener('keydown', handleKeyDown);
       clearTimeout(timeout);
     };
-  }, [scannerActive, barcodeBuffer, products, cartItems]);
+  }, [scannerActive, products]);
 
   // Handle barcode scanned
   const handleBarcodeScanned = (barcode: string) => {
+    // Clean the barcode (trim whitespace and remove any control characters)
+    const cleanBarcode = barcode.trim().replace(/[\r\n\t]/g, '');
+
+    // Debug logging
+    console.log('🔍 Barcode Scanner Debug:');
+    console.log('  Raw barcode:', JSON.stringify(barcode));
+    console.log('  Clean barcode:', cleanBarcode);
+    console.log('  Barcode length:', cleanBarcode.length);
+    console.log('  Total products:', products.length);
+
     // Find product by SKU, old barcode field, or new barcodes array
     const product = products.find(
-      p => p.sku?.toLowerCase() === barcode.toLowerCase() ||
-        p._id === barcode ||
-        p.barcodes?.some(b => b.code === barcode)
+      p => {
+        const skuMatch = p.sku?.toLowerCase() === cleanBarcode.toLowerCase();
+        const idMatch = p._id === cleanBarcode;
+        // const oldBarcodeMatch = p.barcode?.toLowerCase() === cleanBarcode.toLowerCase();
+        const newBarcodesMatch = p.barcodes?.some(b => b.code.toLowerCase() === cleanBarcode.toLowerCase());
+
+        if (skuMatch || idMatch || newBarcodesMatch) {
+          console.log('  ✅ Match found:', p.name);
+          console.log('    - SKU match:', skuMatch, p.sku);
+          console.log('    - ID match:', idMatch);
+          // console.log('    - Old barcode match:', p.barcode);
+          console.log('    - New barcodes match:', newBarcodesMatch, p.barcodes);
+        }
+
+        return skuMatch || idMatch || newBarcodesMatch;
+      }
     );
 
     if (!product) {
-      toast.error(`Product not found for barcode: ${barcode}`);
+      console.log('  ❌ No product found');
+      toast.error(`Product not found for barcode: ${cleanBarcode}`);
       return;
     }
 
@@ -631,14 +666,18 @@ const Index = () => {
           {/* Scanner + Credit Payment */}
           <div className="flex flex-wrap items-center justify-end gap-2">
             <div
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${scannerActive
-                ? "bg-green-50 border-green-200 text-green-700"
-                : "bg-gray-50 border-gray-200 text-gray-500"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${barcodeBuffer.length > 0
+                  ? "bg-blue-50 border-blue-300 text-blue-700"
+                  : scannerActive
+                    ? "bg-green-50 border-green-200 text-green-700"
+                    : "bg-gray-50 border-gray-200 text-gray-500"
                 }`}
             >
-              <Scan className={`h-4 w-4 ${scannerActive ? "animate-pulse" : ""}`} />
+              <Scan className={`h-4 w-4 ${barcodeBuffer.length > 0 ? "animate-spin" : scannerActive ? "animate-pulse" : ""}`} />
               <span className="text-sm font-medium">
-                Scanner: {scannerActive ? "Active" : "Sleeping"}
+                {barcodeBuffer.length > 0
+                  ? `Scanning: ${barcodeBuffer}`
+                  : `Scanner: ${scannerActive ? "Active" : "Sleeping"}`}
               </span>
             </div>
 
