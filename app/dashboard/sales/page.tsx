@@ -458,11 +458,8 @@ const Index = () => {
     return () => clearInterval(checkInactivity);
   }, [lastActivityTime, scannerActive]);
 
-  // Barcode scanner: Combined activity tracking and barcode input handling
+  // Barcode scanner: Wake up on any activity
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    let buffer = '';
-
     const handleActivity = () => {
       setLastActivityTime(Date.now());
       if (!scannerActive) {
@@ -471,152 +468,70 @@ const Index = () => {
       }
     };
 
-    // Debug: Log ALL keyboard events
-    const debugKeyEvent = (e: KeyboardEvent) => {
-      console.log('⌨️ Key event detected:', {
-        type: e.type,
-        key: e.key,
-        keyCode: e.keyCode,
-        code: e.code,
-        target: (e.target as HTMLElement)?.tagName,
-        scannerActive,
-        bufferLength: buffer.length
-      });
+    // Listen for mouse movement, clicks, and keyboard activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
     };
+  }, [scannerActive]);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Debug log
-      debugKeyEvent(e);
+  // Barcode scanner: Listen for barcode input
+  useEffect(() => {
+    if (!scannerActive) return;
 
-      // Update activity time
-      handleActivity();
+    let timeout: NodeJS.Timeout;
 
-      // Only process barcode if scanner is active
-      if (!scannerActive) {
-        console.log('⚠️ Scanner not active, ignoring key');
-        return;
-      }
-
+    const handleKeyPress = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input field
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        console.log('⚠️ Ignoring key - user typing in input field');
         return;
       }
 
       // Enter key means barcode scan is complete
-      if (e.key === 'Enter' || e.keyCode === 13 || e.code === 'Enter') {
-        console.log('🔑 Enter key detected, buffer:', buffer);
-        if (buffer.length > 0) {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('📦 Barcode scanned via Enter:', buffer);
-          const scannedBarcode = buffer;
-          buffer = '';
-          setBarcodeBuffer('');
-          clearTimeout(timeout);
-          // Call handleBarcodeScanned after state updates
-          setTimeout(() => handleBarcodeScanned(scannedBarcode), 0);
-        } else {
-          console.log('⚠️ Enter pressed but buffer is empty');
-        }
+      if (e.key === 'Enter' && barcodeBuffer.length > 0) {
+        e.preventDefault();
+        handleBarcodeScanned(barcodeBuffer);
+        setBarcodeBuffer('');
+        clearTimeout(timeout);
         return;
       }
 
-      // Build barcode buffer (only printable characters)
-      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        buffer += e.key;
-        setBarcodeBuffer(buffer);
-        console.log('📝 Building barcode:', buffer);
+      // Build barcode buffer
+      if (e.key.length === 1) {
+        setBarcodeBuffer(prev => prev + e.key);
 
         // Clear buffer after 100ms of no input (barcode scanners are fast)
         clearTimeout(timeout);
         timeout = setTimeout(() => {
-          if (buffer.length > 0) {
-            console.log('⏱️ Barcode buffer timeout, clearing:', buffer);
-          }
-          buffer = '';
           setBarcodeBuffer('');
         }, 100);
-      } else {
-        console.log('⚠️ Key ignored - not a printable character or modifier pressed');
       }
     };
 
-    const handleKeyPress = (e: KeyboardEvent) => {
-      console.log('⌨️ KeyPress event:', e.key, e.keyCode);
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      console.log('⌨️ KeyUp event:', e.key, e.keyCode);
-    };
-
-    // Listen for mouse movement, clicks, and keyboard activity
-    console.log('🎯 Barcode scanner system initialized - Scanner Active:', scannerActive);
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
-    window.addEventListener('keypress', handleKeyPress, true);
-    window.addEventListener('keyup', handleKeyUp, true);
-
+    window.addEventListener('keypress', handleKeyPress);
     return () => {
-      console.log('🛑 Barcode scanner system stopped');
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('click', handleActivity);
-      window.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('keypress', handleKeyPress, true);
-      window.removeEventListener('keyup', handleKeyUp, true);
+      window.removeEventListener('keypress', handleKeyPress);
       clearTimeout(timeout);
     };
-  }, [scannerActive, products]);
+  }, [scannerActive, barcodeBuffer, products, cartItems]);
 
   // Handle barcode scanned
   const handleBarcodeScanned = (barcode: string) => {
-    // Clean the barcode (trim whitespace and remove any control characters)
-    const cleanBarcode = barcode.trim().replace(/[\r\n\t]/g, '');
-
-    // Debug logging
-    console.log('🔍 Barcode Scanner Debug:');
-    console.log('  Raw barcode:', JSON.stringify(barcode));
-    console.log('  Clean barcode:', cleanBarcode);
-    console.log('  Barcode length:', cleanBarcode.length);
-    console.log('  Total products:', products.length);
-
-    // Find product by SKU, ID, or new barcodes array
+    // Find product by SKU, old barcode field, or new barcodes array
     const product = products.find(
-      p => {
-        const skuMatch = p.sku?.toLowerCase() === cleanBarcode.toLowerCase();
-        const idMatch = p._id === cleanBarcode;
-        const newBarcodesMatch = p.barcodes?.some(b => b.code.toLowerCase() === cleanBarcode.toLowerCase());
-
-        // Log every product check for debugging
-        const isMatch = skuMatch || idMatch || newBarcodesMatch;
-        if (isMatch) {
-          console.log('  ✅ Match found:', p.name);
-          console.log('    - SKU match:', skuMatch, '(SKU:', p.sku, ')');
-          console.log('    - ID match:', idMatch, '(ID:', p._id, ')');
-          console.log('    - Barcodes match:', newBarcodesMatch, '(Barcodes:', p.barcodes, ')');
-        }
-
-        return isMatch;
-      }
+      p => p.sku?.toLowerCase() === barcode.toLowerCase() ||
+        p._id === barcode ||
+        p.barcodes?.some(b => b.code === barcode)
     );
 
-    // If no match, log first 3 products to see their structure
-    if (!product && products.length > 0) {
-      console.log('  📋 Sample products (first 3):');
-      products.slice(0, 3).forEach((p, idx) => {
-        console.log(`    ${idx + 1}. ${p.name}`);
-        console.log(`       SKU: ${p.sku}`);
-        console.log(`       Barcodes: ${JSON.stringify(p.barcodes)}`);
-      });
-    }
-
     if (!product) {
-      console.log('  ❌ No product found');
-      toast.error(`Product not found for barcode: ${cleanBarcode}`);
+      toast.error(`Product not found for barcode: ${barcode}`);
       return;
     }
 
@@ -716,18 +631,14 @@ const Index = () => {
           {/* Scanner + Credit Payment */}
           <div className="flex flex-wrap items-center justify-end gap-2">
             <div
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${barcodeBuffer.length > 0
-                  ? "bg-blue-50 border-blue-300 text-blue-700"
-                  : scannerActive
-                    ? "bg-green-50 border-green-200 text-green-700"
-                    : "bg-gray-50 border-gray-200 text-gray-500"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${scannerActive
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "bg-gray-50 border-gray-200 text-gray-500"
                 }`}
             >
-              <Scan className={`h-4 w-4 ${barcodeBuffer.length > 0 ? "animate-spin" : scannerActive ? "animate-pulse" : ""}`} />
+              <Scan className={`h-4 w-4 ${scannerActive ? "animate-pulse" : ""}`} />
               <span className="text-sm font-medium">
-                {barcodeBuffer.length > 0
-                  ? `Scanning: ${barcodeBuffer}`
-                  : `Scanner: ${scannerActive ? "Active" : "Sleeping"}`}
+                Scanner: {scannerActive ? "Active" : "Sleeping"}
               </span>
             </div>
 
