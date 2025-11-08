@@ -3,7 +3,7 @@ import mongoose, { Schema, Model, Connection } from 'mongoose';
 export interface IAppliedPromotion {
   promotionId: string;
   promotionName: string;
-  promotionType: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+  promotionType: 'percentage' | 'fixed' | 'buy_x_get_y';
   discountAmount: number;
   description?: string;
 }
@@ -83,7 +83,7 @@ const AppliedPromotionSchema = new Schema({
   },
   promotionType: {
     type: String,
-    enum: ['percentage', 'fixed', 'buy_x_get_y', 'bundle'],
+    enum: ['percentage', 'fixed', 'buy_x_get_y'],
     required: true,
   },
   discountAmount: {

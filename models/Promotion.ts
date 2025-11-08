@@ -4,7 +4,7 @@ export interface IPromotion {
   _id: string;
   name: string;
   description?: string;
-  type: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+  type: 'percentage' | 'fixed' | 'buy_x_get_y';
   
   // Discount details
   discountPercentage?: number; // For percentage type
@@ -52,7 +52,7 @@ const PromotionSchema = new Schema<IPromotion>(
     },
     type: {
       type: String,
-      enum: ['percentage', 'fixed', 'buy_x_get_y', 'bundle'],
+      enum: ['percentage', 'fixed', 'buy_x_get_y'],
       required: true,
     },
     discountPercentage: {

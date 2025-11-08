@@ -2,7 +2,7 @@ export interface Promotion {
   _id: string;
   name: string;
   description?: string;
-  type: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+  type: 'percentage' | 'fixed' | 'buy_x_get_y';
   
   // Discount details
   discountPercentage?: number;
@@ -40,7 +40,7 @@ export interface Promotion {
 export interface PromotionFormData {
   name: string;
   description?: string;
-  type: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+  type: 'percentage' | 'fixed' | 'buy_x_get_y';
   discountPercentage?: number;
   discountAmount?: number;
   buyQuantity?: number;
@@ -60,7 +60,7 @@ export interface PromotionFormData {
 export interface AppliedPromotion {
   promotionId: string;
   promotionName: string;
-  promotionType: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+  promotionType: 'percentage' | 'fixed' | 'buy_x_get_y';
   discountAmount: number;
   description?: string;
 }

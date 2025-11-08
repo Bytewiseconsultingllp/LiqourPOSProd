@@ -8,7 +8,7 @@ import { getVendorStockModel } from '@/models/VendorStock';
 interface AppliedPromotion {
   promotionId: string;
   promotionName: string;
-  promotionType: 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
+  promotionType: 'percentage' | 'fixed' | 'buy_x_get_y';
   discountAmount: number;
   description?: string;
 }

@@ -530,7 +530,7 @@ VendorSchema.index({ organizationId: 1, isActive: 1 });
 const AppliedPromotionSchema = new Schema({
   promotionId: { type: String, required: true },
   promotionName: { type: String, required: true },
-  promotionType: { type: String, enum: ['percentage', 'fixed', 'buy_x_get_y', 'bundle'], required: true },
+  promotionType: { type: String, enum: ['percentage', 'fixed', 'buy_x_get_y'], required: true },
   discountAmount: { type: Number, required: true },
   description: { type: String },
 }, { _id: false });

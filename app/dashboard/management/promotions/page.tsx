@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Power, PowerOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Power, PowerOff, X } from 'lucide-react';
 import { Promotion } from '@/types/promotion';
+import { ProductDetails } from '@/types/product';
 import { apiFetch } from '@/lib/api-client';
 import { Input } from '../../components/ui/input';
 
@@ -93,7 +94,6 @@ export default function PromotionsPage() {
       percentage: 'Percentage Off',
       fixed: 'Fixed Amount',
       buy_x_get_y: 'Buy X Get Y',
-      bundle: 'Bundle Offer',
     };
     return labels[type] || type;
   };
@@ -184,7 +184,26 @@ export default function PromotionsPage() {
                         `Buy ${promotion.buyQuantity} Get ${promotion.getQuantity}`}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {getApplicableOnLabel(promotion.applicableOn)}
+                      <div>
+                        <div className="font-medium">{getApplicableOnLabel(promotion.applicableOn)}</div>
+                        {promotion.applicableOn === 'category' && promotion.categoryIds && promotion.categoryIds.length > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {promotion.categoryIds.slice(0, 2).join(', ')}
+                            {promotion.categoryIds.length > 2 && ` +${promotion.categoryIds.length - 2} more`}
+                          </div>
+                        )}
+                        {promotion.applicableOn === 'brand' && promotion.brandNames && promotion.brandNames.length > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {promotion.brandNames.slice(0, 2).join(', ')}
+                            {promotion.brandNames.length > 2 && ` +${promotion.brandNames.length - 2} more`}
+                          </div>
+                        )}
+                        {promotion.applicableOn === 'product' && promotion.productIds && promotion.productIds.length > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {promotion.productIds.length} product{promotion.productIds.length > 1 ? 's' : ''} selected
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <div>{formatDate(promotion.startDate)}</div>
@@ -273,6 +292,9 @@ function PromotionModal({
     buyQuantity: promotion?.buyQuantity || 1,
     getQuantity: promotion?.getQuantity || 1,
     applicableOn: promotion?.applicableOn || 'all',
+    categoryIds: promotion?.categoryIds || [],
+    productIds: promotion?.productIds || [],
+    brandNames: promotion?.brandNames || [],
     minPurchaseAmount: promotion?.minPurchaseAmount || 0,
     maxDiscountAmount: promotion?.maxDiscountAmount || 0,
     startDate: promotion?.startDate
@@ -286,6 +308,38 @@ function PromotionModal({
   });
 
   const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState<ProductDetails[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    fetchProductsAndOptions();
+  }, []);
+
+  const fetchProductsAndOptions = async () => {
+    try {
+      setLoadingData(true);
+      const response = await apiFetch('/api/products');
+
+      if (response.ok) {
+        const data = await response.json();
+        const productsList = data.data || [];
+        setProducts(productsList);
+
+        // Extract unique categories and brands
+        const uniqueCategories = Array.from(new Set(productsList.map((p: ProductDetails) => p.category)));
+        const uniqueBrands = Array.from(new Set(productsList.map((p: ProductDetails) => p.brand)));
+        
+        setCategories(uniqueCategories.filter(Boolean) as string[]);
+        setBrands(uniqueBrands.filter(Boolean) as string[]);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -367,7 +421,6 @@ function PromotionModal({
                   <option value="percentage">Percentage Off</option>
                   <option value="fixed">Fixed Amount</option>
                   <option value="buy_x_get_y">Buy X Get Y</option>
-                  <option value="bundle">Bundle Offer</option>
                 </select>
               </div>
 
@@ -377,7 +430,15 @@ function PromotionModal({
                 </label>
                 <select
                   value={formData.applicableOn}
-                  onChange={(e) => setFormData({ ...formData, applicableOn: e.target.value as any })}
+                  onChange={(e) => {
+                    setFormData({ 
+                      ...formData, 
+                      applicableOn: e.target.value as any,
+                      categoryIds: [],
+                      productIds: [],
+                      brandNames: [],
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 >
@@ -388,6 +449,193 @@ function PromotionModal({
                 </select>
               </div>
             </div>
+
+            {/* Category Selection */}
+            {formData.applicableOn === 'category' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Categories *
+                </label>
+                {loadingData ? (
+                  <div className="text-sm text-gray-500">Loading categories...</div>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={(e) => {
+                        const category = e.target.value;
+                        if (category && !formData.categoryIds.includes(category)) {
+                          setFormData({
+                            ...formData,
+                            categoryIds: [...formData.categoryIds, category],
+                          });
+                        }
+                        e.target.value = '';
+                      }}
+                      value=""
+                    >
+                      <option value="">Select a category...</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat} disabled={formData.categoryIds.includes(cat)}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.categoryIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {formData.categoryIds.map((cat) => (
+                          <span
+                            key={cat}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                          >
+                            {cat}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData({
+                                  ...formData,
+                                  categoryIds: formData.categoryIds.filter((c) => c !== cat),
+                                });
+                              }}
+                              className="hover:bg-blue-200 rounded-full p-0.5"
+                            >
+                              <X size={14} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Product Selection */}
+            {formData.applicableOn === 'product' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Products *
+                </label>
+                {loadingData ? (
+                  <div className="text-sm text-gray-500">Loading products...</div>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={(e) => {
+                        const productId = e.target.value;
+                        if (productId && !formData.productIds.includes(productId)) {
+                          setFormData({
+                            ...formData,
+                            productIds: [...formData.productIds, productId],
+                          });
+                        }
+                        e.target.value = '';
+                      }}
+                      value=""
+                    >
+                      <option value="">Select a product...</option>
+                      {products.map((product) => (
+                        <option
+                          key={product._id}
+                          value={product._id}
+                          disabled={formData.productIds.includes(product._id)}
+                        >
+                          {product.name} - {product.brand} ({product.volumeML}ml)
+                        </option>
+                      ))}
+                    </select>
+                    {formData.productIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {formData.productIds.map((productId) => {
+                          const product = products.find((p) => p._id === productId);
+                          return product ? (
+                            <span
+                              key={productId}
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                            >
+                              {product.name} - {product.brand}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData({
+                                    ...formData,
+                                    productIds: formData.productIds.filter((id) => id !== productId),
+                                  });
+                                }}
+                                className="hover:bg-blue-200 rounded-full p-0.5"
+                              >
+                                <X size={14} />
+                              </button>
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Brand Selection */}
+            {formData.applicableOn === 'brand' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Brands *
+                </label>
+                {loadingData ? (
+                  <div className="text-sm text-gray-500">Loading brands...</div>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={(e) => {
+                        const brand = e.target.value;
+                        if (brand && !formData.brandNames.includes(brand)) {
+                          setFormData({
+                            ...formData,
+                            brandNames: [...formData.brandNames, brand],
+                          });
+                        }
+                        e.target.value = '';
+                      }}
+                      value=""
+                    >
+                      <option value="">Select a brand...</option>
+                      {brands.map((brand) => (
+                        <option key={brand} value={brand} disabled={formData.brandNames.includes(brand)}>
+                          {brand}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.brandNames.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {formData.brandNames.map((brand) => (
+                          <span
+                            key={brand}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                          >
+                            {brand}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData({
+                                  ...formData,
+                                  brandNames: formData.brandNames.filter((b) => b !== brand),
+                                });
+                              }}
+                              className="hover:bg-blue-200 rounded-full p-0.5"
+                            >
+                              <X size={14} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {formData.type === 'percentage' && (
               <div>
