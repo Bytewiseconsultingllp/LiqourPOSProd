@@ -986,7 +986,7 @@ const Index = () => {
                         <Input
                           id="pricePerCaret"
                           type="number"
-                          step="1"
+                          step="0.01"
                           min="0"
                           value={watchPrice}
                           onChange={(e) => setValue("pricePerCaret", Number(e.target.value))}
