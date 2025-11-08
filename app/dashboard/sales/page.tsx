@@ -544,25 +544,35 @@ const Index = () => {
     console.log('  Barcode length:', cleanBarcode.length);
     console.log('  Total products:', products.length);
 
-    // Find product by SKU, old barcode field, or new barcodes array
+    // Find product by SKU, ID, or new barcodes array
     const product = products.find(
       p => {
         const skuMatch = p.sku?.toLowerCase() === cleanBarcode.toLowerCase();
         const idMatch = p._id === cleanBarcode;
-        // const oldBarcodeMatch = p.barcode?.toLowerCase() === cleanBarcode.toLowerCase();
         const newBarcodesMatch = p.barcodes?.some(b => b.code.toLowerCase() === cleanBarcode.toLowerCase());
 
-        if (skuMatch || idMatch || newBarcodesMatch) {
+        // Log every product check for debugging
+        const isMatch = skuMatch || idMatch || newBarcodesMatch;
+        if (isMatch) {
           console.log('  ✅ Match found:', p.name);
-          console.log('    - SKU match:', skuMatch, p.sku);
-          console.log('    - ID match:', idMatch);
-          // console.log('    - Old barcode match:', p.barcode);
-          console.log('    - New barcodes match:', newBarcodesMatch, p.barcodes);
+          console.log('    - SKU match:', skuMatch, '(SKU:', p.sku, ')');
+          console.log('    - ID match:', idMatch, '(ID:', p._id, ')');
+          console.log('    - Barcodes match:', newBarcodesMatch, '(Barcodes:', p.barcodes, ')');
         }
 
-        return skuMatch || idMatch || newBarcodesMatch;
+        return isMatch;
       }
     );
+
+    // If no match, log first 3 products to see their structure
+    if (!product && products.length > 0) {
+      console.log('  📋 Sample products (first 3):');
+      products.slice(0, 3).forEach((p, idx) => {
+        console.log(`    ${idx + 1}. ${p.name}`);
+        console.log(`       SKU: ${p.sku}`);
+        console.log(`       Barcodes: ${JSON.stringify(p.barcodes)}`);
+      });
+    }
 
     if (!product) {
       console.log('  ❌ No product found');
