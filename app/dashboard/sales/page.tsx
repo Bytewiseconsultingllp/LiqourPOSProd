@@ -523,10 +523,11 @@ const Index = () => {
 
   // Handle barcode scanned
   const handleBarcodeScanned = (barcode: string) => {
-    // Find product by SKU or barcode
+    // Find product by SKU, old barcode field, or new barcodes array
     const product = products.find(
       p => p.sku?.toLowerCase() === barcode.toLowerCase() ||
-        p._id === barcode
+        p._id === barcode ||
+        p.barcodes?.some(b => b.code === barcode)
     );
 
     if (!product) {
