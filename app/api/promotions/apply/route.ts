@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const connection = await getTenantConnection((user as any).tenantId);
+    const connection = await getTenantConnection((user as any).organizationId);
     const Promotion = getPromotionModel(connection);
 
     // Get all active promotions

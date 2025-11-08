@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
         userId: decoded.userId,
         customerId: undefined,
         customerName: 'Walk-in Customer',
-        customerType: 'walk-in',
+        customerType: 'Walk-In',
         items: discrepancyItems,
         totalQuantityBottles: totalQuantity,
         totalVolumeML: totalVolume,

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const activeOnly = searchParams.get('activeOnly') === 'true';
 
-    const connection = await getTenantConnection(user.tenantId);
+    const connection = await getTenantConnection(user.organizationId);
     const Promotion = getPromotionModel(connection);
 
     // Build query
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const connection = await getTenantConnection(user.tenantId);
+    const connection = await getTenantConnection(user.organizationId);
     const Promotion = getPromotionModel(connection);
 
     const promotion = await Promotion.create({
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       isActive: isActive !== undefined ? isActive : true,
       priority: priority || 0,
       createdBy: user.userId,
-      organizationId: user.tenantId,
+      organizationId: user.organizationId,
     });
 
     return NextResponse.json({

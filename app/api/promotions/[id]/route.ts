@@ -17,7 +17,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const connection = await getTenantConnection((user as any).tenantId);
+    const connection = await getTenantConnection((user as any).organizationId);
     const Promotion = getPromotionModel(connection);
 
     const promotion = await Promotion.findById(params.id);
@@ -57,7 +57,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const connection = await getTenantConnection((user as any).tenantId);
+    const connection = await getTenantConnection((user as any).organizationId);
     const Promotion = getPromotionModel(connection);
 
     // Convert date strings to Date objects if present
@@ -109,7 +109,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const connection = await getTenantConnection((user as any).tenantId);
+    const connection = await getTenantConnection((user as any).organizationId);
     const Promotion = getPromotionModel(connection);
 
     const promotion = await Promotion.findByIdAndDelete(params.id);
@@ -150,7 +150,7 @@ export async function PATCH(
 
     const { isActive } = await request.json();
 
-    const connection = await getTenantConnection((user as any).tenantId);
+    const connection = await getTenantConnection((user as any).organizationId);
     const Promotion = getPromotionModel(connection);
 
     const promotion = await Promotion.findByIdAndUpdate(

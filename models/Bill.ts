@@ -220,7 +220,7 @@ const BillSchema = new Schema<IBill>(
     customerType: {
       type: String,
       required: true,
-      enum: ['walk-in', 'registered'],
+      enum: ['Walk-In', 'Retail', 'B2B', 'Wholesale'],
     },
     items: [BillItemSchema],
     totalQuantityBottles: {

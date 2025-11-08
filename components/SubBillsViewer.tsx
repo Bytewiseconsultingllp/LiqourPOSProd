@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Printer, FileText } from 'lucide-react';
 import { Button } from '@/app/dashboard/components/ui/button';
 import { ThermalBillPrint } from './ThermalBillPrint';
 import { BatchPrintSubBills } from './BatchPrintSubBills';
+import { Customer } from '@/types/customer';
+import { apiFetch } from '@/lib/api-client';
 
 interface SubBill {
   items: any[];
@@ -29,13 +31,33 @@ interface Sale {
 
 interface SubBillsViewerProps {
   sale: Sale;
+  customer: Customer | null;
   onClose: () => void;
 }
 
-export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, onClose }) => {
+export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, onClose }) => {
   const [viewingSubBill, setViewingSubBill] = useState<any | null>(null);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [showBatchPrint, setShowBatchPrint] = useState(false);
+  const [qrSrc, setQrSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await apiFetch('/api/qrcodes');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const codes = Array.isArray(data?.data) ? data.data : [];
+        const def = codes.find((q: any) => q?.isDefault) || codes[0];
+        if (def?.imageBase64) {
+          const src = String(def.imageBase64).startsWith('data:')
+            ? def.imageBase64
+            : `data:image/png;base64,${def.imageBase64}`;
+          setQrSrc(src);
+        }
+      } catch { }
+    })();
+  }, []);
 
   if (!sale.subBills || sale.subBills.length === 0) {
     return (
@@ -284,10 +306,10 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, onClose })
                 </div>
               </div>
             </div>
-            
+
             <div className="flex gap-3">
-              <Button 
-                onClick={handlePrintAll} 
+              <Button
+                onClick={handlePrintAll}
                 className="flex-1 gap-2"
               >
                 <Printer className="h-4 w-4" />
@@ -314,6 +336,8 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, onClose })
       {showBatchPrint && (
         <BatchPrintSubBills
           sale={sale}
+          qrSrc={qrSrc}
+          customer={customer}
           onClose={handleCloseBatchPrint}
         />
       )}

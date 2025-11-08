@@ -34,7 +34,7 @@ interface CreateSaleRequest {
   customerId?: string;
   customerName: string;
   customerPhone?: string;
-  customerType: 'walk-in' | 'registered';
+  customerType: 'Walk-In' | 'B2B'| 'Wholesale'|'Retail';
   items: CartItem[];
   payment: {
     mode: 'Cash' | 'Online' | 'Wallet' | 'Credit' | 'Mixed';
@@ -345,7 +345,7 @@ export async function POST(request: NextRequest) {
         totalBillId,
         vendorIds,
         userId: user.userId,
-        customerId: customerType === 'registered' ? customerId : undefined,
+        customerId: customerType === 'Retail' ? customerId : undefined,
         customerName,
         customerPhone,
         customerType,
@@ -369,7 +369,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Update customer outstanding balance if credit payment
-    if (customerType === 'registered' && customerId && payment.creditAmount > 0) {
+    if (customerType === 'Retail' && customerId && payment.creditAmount > 0) {
       const Customer = getTenantModel(connection, 'Customer');
       await Customer.findByIdAndUpdate(
         customerId,

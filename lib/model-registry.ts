@@ -572,7 +572,7 @@ const BillSchema = new Schema(
     customerId: { type: String },
     customerName: { type: String, required: true },
     customerPhone: { type: String },
-    customerType: { type: String, required: true, enum: ['walk-in', 'registered'] },
+    customerType: { type: String, required: true, enum: ['walk-in', 'Retail','B2B','Wholesale'] },
     items: [BillItemSchema],
     totalQuantityBottles: { type: Number, required: true },
     totalVolumeML: { type: Number, required: true },

@@ -4,6 +4,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { getPrintSettings, getPrintSettingsSync } from '@/lib/print-settings';
 import { BillFieldSettings } from '@/types/print-settings';
+import { apiFetch } from '@/lib/api-client';
+import { Customer } from '@/types/customer';
 
 interface SubBill {
   items: any[];
@@ -27,13 +29,16 @@ interface Sale {
 }
 
 interface BatchPrintSubBillsProps {
+  customer: Customer | null;
   sale: Sale;
   onClose: () => void;
+  qrSrc: string | null;
 }
 
-export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, onClose }) => {
+export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ customer, sale, onClose, qrSrc }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState<BillFieldSettings | null>(null);
+  
 
   // Load print settings
   useEffect(() => {
@@ -41,52 +46,10 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, on
     setSettings(printSettings.subBill);
   }, []);
 
-  // Safety check
-  if (!sale.subBills || sale.subBills.length === 0) {
-    onClose();
-    return null;
-  }
+  // Load default QR code for organization
+  
 
-  // Don't render until settings are loaded
-  if (!settings) {
-    return null;
-  }
-
-  // Get organization info from localStorage
-  const getOrgInfo = () => {
-    try {
-      const orgData = localStorage.getItem('organization');
-      if (orgData) {
-        const org = JSON.parse(orgData);
-        return {
-          name: org.name || 'LIQUOR POS',
-          address: org.address || '',
-          phone: org.phone || '',
-          gstin: org.gstin || org.gstNumber || '',
-        };
-      }
-    } catch (error) {
-      console.error('Error parsing organization data:', error);
-    }
-    return {
-      name: 'LIQUOR POS',
-      address: '',
-      phone: '',
-      gstin: '',
-    };
-  };
-
-  const orgInfo = getOrgInfo();
-
-  useEffect(() => {
-    // Auto-trigger print after component mounts
-    const timer = setTimeout(() => {
-      handlePrint();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
+  // Print handler must be defined before it's used inside effects
   const handlePrint = () => {
     const printContent = printRef.current;
     if (!printContent) return;
@@ -229,6 +192,53 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, on
     }, 250);
   };
 
+  // Auto-trigger print when ready; keep hooks before any conditional returns
+  useEffect(() => {
+    if (!settings) return;
+    if (!sale.subBills || sale.subBills.length === 0) return;
+    const timer = setTimeout(() => {
+      handlePrint();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [settings, sale.subBills]);
+
+  // Safety check
+  if (!sale.subBills || sale.subBills.length === 0) {
+    onClose();
+    return null;
+  }
+
+  // Don't render UI until settings are loaded
+  if (!settings) {
+    return null;
+  }
+
+  // Get organization info from localStorage
+  const getOrgInfo = () => {
+    try {
+      const orgData = localStorage.getItem('organization');
+      if (orgData) {
+        const org = JSON.parse(orgData);
+        return {
+          name: org.name || 'LIQUOR POS',
+          address: org.address || '',
+          phone: org.phone || '',
+          gstin: org.gstin || org.gstNumber || '',
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing organization data:', error);
+    }
+    return {
+      name: 'LIQUOR POS',
+      address: '',
+      phone: '',
+      gstin: '',
+    };
+  };
+
+  const orgInfo = getOrgInfo();
+
   const renderSubBill = (subBill: SubBill, index: number) => {
     const totalQuantity = subBill.items.reduce((sum, item) => sum + item.quantity, 0);
     const totalVolume = subBill.items.reduce(
@@ -285,6 +295,12 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, on
             <div className="row">
               <span className="label">Phone:</span>
               <span>{sale.customerPhone}</span>
+            </div>
+          )}
+          {customer && (
+            <div className="row">
+              <span className="label">OutStanding Balance:</span>
+              <span>{customer?.openingBalance || 'N/A'}</span>
             </div>
           )}
         </div>
@@ -393,8 +409,16 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, on
               </div>
             )}
           </div>
-        )}
 
+        )}
+        {qrSrc && (
+          <div className="footer" style={{ borderTop: 'none', marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <img src={qrSrc} alt="Payment QR" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+              <div>Scan to Pay</div>
+            </div>
+          </div>
+        )}
         {/* Footer */}
         {settings!.footer && (
           <div className="footer">
@@ -402,6 +426,9 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ sale, on
             <div>Please visit again</div>
           </div>
         )}
+
+        {/* QR Code at bottom */}
+
 
         {/* Page Break (except for last sub-bill) */}
         {index < sale.subBills!.length - 1 && <div className="page-break"></div>}

@@ -923,6 +923,7 @@ const Index = () => {
       {/* Sub-Bills Viewer */}
       {viewingSubBills && (
         <SubBillsViewer
+          customer={selectedCustomer}
           sale={viewingSubBills}
           onClose={handleCloseSubBills}
         />

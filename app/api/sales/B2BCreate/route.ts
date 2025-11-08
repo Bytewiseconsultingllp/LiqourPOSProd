@@ -34,7 +34,7 @@ interface CreateSaleRequest {
   customerId?: string;
   customerName: string;
   customerPhone?: string;
-  customerType: 'walk-in' | 'registered';
+  customerType: 'Walk-In' | 'B2B'| 'Wholesale'|'Retail'; | 'registered';
   items: CartItem[];
   payment: {
     mode: 'Cash' | 'Online' | 'Wallet' | 'Credit' | 'Mixed';
