@@ -62,6 +62,7 @@ export default function ProductsManagementPage() {
     brand: '',
     category: '',
     pricePerUnit: '',
+    purchasePricePerCaret: '',
     volumeML: '',
     currentStock: '',
     reorderLevel: '',
@@ -104,6 +105,17 @@ export default function ProductsManagementPage() {
 
     try {
       setIsSubmitting(true);
+      // Build purchase price array if purchase price per caret is provided
+      const purchasePricePerUnit = [];
+      if (formData.purchasePricePerCaret && parseFloat(formData.purchasePricePerCaret) > 0 && formData.bottlesPerCaret && parseInt(formData.bottlesPerCaret) > 0) {
+        const pricePerBottle = parseFloat(formData.purchasePricePerCaret) / parseInt(formData.bottlesPerCaret);
+        purchasePricePerUnit.push({
+          purchasePrice: pricePerBottle,
+          effectiveFrom: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+      }
+
       const response = await apiFetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -119,7 +131,7 @@ export default function ProductsManagementPage() {
             ? parseInt(formData.bottlesPerCaret)
             : undefined,
           isActive: true,
-          purchasePricePerUnit: [],
+          purchasePricePerUnit: purchasePricePerUnit,
         }),
       });
 
@@ -275,6 +287,18 @@ export default function ProductsManagementPage() {
 
     try {
       setIsSubmitting(true);
+      
+      // Build purchase price update if purchase price per caret is provided
+      let purchasePriceUpdate = undefined;
+      if (formData.purchasePricePerCaret && parseFloat(formData.purchasePricePerCaret) > 0 && formData.bottlesPerCaret && parseInt(formData.bottlesPerCaret) > 0) {
+        const pricePerBottle = parseFloat(formData.purchasePricePerCaret) / parseInt(formData.bottlesPerCaret);
+        purchasePriceUpdate = {
+          purchasePrice: pricePerBottle,
+          effectiveFrom: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        };
+      }
+      
       const response = await apiFetch(`/api/products/${selectedProduct._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -289,6 +313,7 @@ export default function ProductsManagementPage() {
           bottlesPerCaret: formData.bottlesPerCaret
             ? parseInt(formData.bottlesPerCaret)
             : undefined,
+          purchasePriceUpdate: purchasePriceUpdate,
         }),
       });
 
@@ -308,6 +333,17 @@ export default function ProductsManagementPage() {
 
   const openEditModal = (product: ProductDetails) => {
     setSelectedProduct(product);
+    
+    // Calculate purchase price per caret from latest purchase price
+    let purchasePricePerCaret = '';
+    if (product.purchasePricePerUnit && product.purchasePricePerUnit.length > 0 && product.bottlesPerCaret) {
+      const sorted = [...product.purchasePricePerUnit].sort((a, b) =>
+        new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime()
+      );
+      const latestPurchasePrice = sorted[0].purchasePrice;
+      purchasePricePerCaret = (latestPurchasePrice * product.bottlesPerCaret).toFixed(2);
+    }
+    
     setFormData({
       name: product.name,
       description: product.description || '',
@@ -315,6 +351,7 @@ export default function ProductsManagementPage() {
       brand: product.brand,
       category: product.category,
       pricePerUnit: product.pricePerUnit.toString(),
+      purchasePricePerCaret: purchasePricePerCaret,
       volumeML: product.volumeML.toString(),
       currentStock: product.currentStock.toString(),
       reorderLevel: product.reorderLevel?.toString() || '',
@@ -332,6 +369,7 @@ export default function ProductsManagementPage() {
       brand: '',
       category: '',
       pricePerUnit: '',
+      purchasePricePerCaret: '',
       volumeML: '',
       currentStock: '',
       reorderLevel: '',
@@ -532,7 +570,7 @@ export default function ProductsManagementPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Price per Unit</Label>
+                <Label>MRP</Label>
                 <Input
                   placeholder="Price per Unit"
                   type="number"
@@ -582,9 +620,38 @@ export default function ProductsManagementPage() {
                   }
                 />
               </div>
+              <div className="space-y-1">
+                <Label>Bottles per caret</Label>
+                <Input
+                  placeholder="Bottles per caret"
+                  type="number"
+                  value={formData.bottlesPerCaret}
+                  onChange={(e) =>
+                    setFormData({ ...formData, bottlesPerCaret: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Purchase Price per Caret</Label>
+                <Input
+                  placeholder="Purchase Price per Caret"
+                  type="number"
+                  step="0.01"
+                  value={formData.purchasePricePerCaret}
+                  onChange={(e) =>
+                    setFormData({ ...formData, purchasePricePerCaret: e.target.value })
+                  }
+                />
+                {formData.purchasePricePerCaret && formData.bottlesPerCaret && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Per Bottle: ₹{(parseFloat(formData.purchasePricePerCaret) / parseInt(formData.bottlesPerCaret)).toFixed(2)}
+                  </p>
+                )}
+              </div>
+
 
               {/* 🆕 Barcode Upload & Preview */}
-              <div className="md:col-span-2 mt-2">
+              {/* <div className="md:col-span-2 mt-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Barcode Images
                 </label>
@@ -595,9 +662,9 @@ export default function ProductsManagementPage() {
                   onChange={handleBarcodesUpload}
                   className="w-full border rounded-lg p-2"
                 />
-              </div>
+              </div> */}
 
-              {formData.barcodes.length > 0 && (
+              {/* {formData.barcodes.length > 0 && (
                 <div className="md:col-span-2 grid grid-cols-3 gap-3 mt-3">
                   {formData.barcodes.map((b, i) => (
                     <div
@@ -619,7 +686,7 @@ export default function ProductsManagementPage() {
                     </div>
                   ))}
                 </div>
-              )}
+              )} */}
 
               {/* Buttons */}
               <div className="md:col-span-2 flex gap-3 mt-6">

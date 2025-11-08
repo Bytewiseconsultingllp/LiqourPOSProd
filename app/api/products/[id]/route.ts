@@ -60,9 +60,24 @@ export async function PUT(
     // Using tenant-registered 'Product' model
     const ProductDetails = getTenantModel(connection, 'Product');
 
+    // Handle purchase price update separately
+    const { purchasePriceUpdate, ...updateData } = body;
+    
+    // If purchase price update is provided, add it to the purchasePricePerUnit array
+    if (purchasePriceUpdate) {
+      const product = await ProductDetails.findById(params.id);
+      if (product) {
+        if (!product.purchasePricePerUnit) {
+          product.purchasePricePerUnit = [];
+        }
+        product.purchasePricePerUnit.push(purchasePriceUpdate);
+        await product.save();
+      }
+    }
+
     const product = await ProductDetails.findByIdAndUpdate(
       params.id,
-      body,
+      updateData,
       { new: true, runValidators: true }
     );
 
