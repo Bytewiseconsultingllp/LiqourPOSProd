@@ -178,6 +178,17 @@ export default function ProductsManagementPage() {
       for (let i = 0; i < productsData.length; i++) {
         const product = productsData[i];
         try {
+          // Build purchase price array if purchase price is provided
+          const purchasePricePerUnit = [];
+          if (product.purchasePrice && Number(product.purchasePrice) > 0) {
+            purchasePricePerUnit.push({
+              purchasePrice: Number(product.purchasePrice),
+              batchNumber: product.batchNumber ? String(product.batchNumber) : undefined,
+              effectiveFrom: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+            });
+          }
+
           // Ensure all fields are properly typed
           const productData = {
             name: String(product.name || ''),
@@ -193,7 +204,7 @@ export default function ProductsManagementPage() {
             bottlesPerCaret: product.bottlesPerCaret ? Number(product.bottlesPerCaret) : undefined,
             barcode: product.barcode ? String(product.barcode) : undefined,
             isActive: product.isActive !== false,
-            purchasePricePerUnit: [],
+            purchasePricePerUnit: purchasePricePerUnit,
           };
 
           const response = await apiFetch('/api/products', {

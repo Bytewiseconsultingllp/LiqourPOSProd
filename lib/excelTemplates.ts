@@ -13,6 +13,8 @@ export const downloadProductTemplate = () => {
       'Brand': 'Premium Brand',
       'Category': 'Whisky',
       'Price Per Unit': 1500,
+      'Purchase Price': 1200,
+      'Batch Number': 'BATCH-001',
       'Volume (ML)': 750,
       'Current Stock': 50,
       'Morning Stock': 50,
@@ -28,6 +30,8 @@ export const downloadProductTemplate = () => {
       'Brand': 'Premium Brand',
       'Category': 'Vodka',
       'Price Per Unit': 2000,
+      'Purchase Price': 1600,
+      'Batch Number': 'BATCH-002',
       'Volume (ML)': 1000,
       'Current Stock': 30,
       'Morning Stock': 30,
@@ -49,6 +53,8 @@ export const downloadProductTemplate = () => {
     { wch: 15 }, // Brand
     { wch: 15 }, // Category
     { wch: 15 }, // Price Per Unit
+    { wch: 15 }, // Purchase Price
+    { wch: 15 }, // Batch Number
     { wch: 12 }, // Volume (ML)
     { wch: 15 }, // Current Stock
     { wch: 15 }, // Morning Stock
@@ -81,6 +87,8 @@ export const downloadProductTemplate = () => {
     { Instruction: '- Brand: Brand name (Required)' },
     { Instruction: '- Category: Product category like Whisky, Vodka, etc. (Required)' },
     { Instruction: '- Price Per Unit: Selling price per bottle (Required)' },
+    { Instruction: '- Purchase Price: Purchase/cost price per bottle (Optional)' },
+    { Instruction: '- Batch Number: Batch number for purchase tracking (Optional)' },
     { Instruction: '- Volume (ML): Volume in milliliters (Required)' },
     { Instruction: '- Current Stock: Current stock quantity (Required)' },
     { Instruction: '- Morning Stock: Morning stock count' },
@@ -126,6 +134,8 @@ export const parseProductExcel = async (file: File): Promise<any[]> => {
           brand: row['Brand'],
           category: row['Category'],
           pricePerUnit: parseFloat(row['Price Per Unit']) || 0,
+          purchasePrice: parseFloat(row['Purchase Price']) || 0,
+          batchNumber: row['Batch Number'] || '',
           volumeML: parseFloat(row['Volume (ML)']) || 0,
           currentStock: parseFloat(row['Current Stock']) || 0,
           morningStock: parseFloat(row['Morning Stock']) || 0,
