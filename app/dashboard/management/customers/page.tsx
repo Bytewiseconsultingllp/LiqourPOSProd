@@ -456,7 +456,6 @@ export default function CustomerManagementPage() {
                   >
                     <option value="Retail">Retail</option>
                     <option value="Wholesale">Wholesale</option>
-                    <option value="Walk-In">Walk-In</option>
                     <option value="B2B">B2B</option>
                   </select>
                 </div>

@@ -10,9 +10,10 @@ interface CustomerSelectorProps {
   customers: Customer[];
   selectedCustomer: Customer | null;
   onSelectCustomer: (customer: Customer) => void;
+  showWalkInButton?: boolean;
 }
 
-export function CustomerSelector({ customers, selectedCustomer, onSelectCustomer }: CustomerSelectorProps) {
+export function CustomerSelector({ customers, selectedCustomer, onSelectCustomer, showWalkInButton = true }: CustomerSelectorProps) {
   const [open, setOpen] = useState(false);
 
   const handleWalkInCustomer = () => {
@@ -43,14 +44,16 @@ export function CustomerSelector({ customers, selectedCustomer, onSelectCustomer
 
   return (
     <div className="flex gap-3 items-center">
-      <Button
-        onClick={handleWalkInCustomer}
-        variant={selectedCustomer?._id === 'walk-in' ? 'default' : 'outline'}
-        className="gap-2"
-      >
-        <UserRound className="h-4 w-4" />
-        Walk-in Customer
-      </Button>
+      {showWalkInButton && (
+        <Button
+          onClick={handleWalkInCustomer}
+          variant={selectedCustomer?._id === 'walk-in' ? 'default' : 'outline'}
+          className="gap-2"
+        >
+          <UserRound className="h-4 w-4" />
+          Walk-in Customer
+        </Button>
+      )}
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>

@@ -1,5 +1,5 @@
 import { getAuthenticatedUser } from '@/lib/auth';
-import { getTenantConnection } from '@/lib/tenant-db';
+import { closeTenantConnection, getTenantConnection } from '@/lib/tenant-db';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getBillModel } from '@/models/Bill';
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const bills = await Bill.find(query)
       .sort({ saleDate: -1, createdAt: -1 })
       .lean();
-
+    closeTenantConnection(user.organizationId);
     return NextResponse.json({
       success: true,
       data: bills,

@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api-client';
 import { Vendor } from '@/types/vendor';
 import { Plus, Edit2, Trash2, Search, Loader2, X } from 'lucide-react';
 import { Input } from '../../components/ui/input';
+import { getPlaceholder, validateForm, validateField, hasErrors } from '@/lib/formValidations';
 
 export default function VendorManagementPage() {
   const router = useRouter();
@@ -36,6 +37,34 @@ export default function VendorManagementPage() {
     priority: 1,
     isActive: true,
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const updateVendorField = (field: string, value: any) => {
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value } as typeof prev;
+      setFormErrors((prevErrors) => {
+        const updated = { ...prevErrors };
+        const error = validateField('vendor', field, value, next as Record<string, any>);
+        if (error) {
+          updated[field] = error;
+        } else {
+          delete updated[field];
+        }
+        return updated;
+      });
+      return next;
+    });
+  };
+
+  const validateVendorForm = () => {
+    const errors = validateForm('vendor', formData as unknown as Record<string, any>);
+    if (hasErrors(errors)) {
+      setFormErrors(errors);
+      showToast('Please fix the highlighted errors before saving.', 'error');
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -150,12 +179,14 @@ export default function VendorManagementPage() {
         isActive: true,
       });
     }
+    setFormErrors({});
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingVendor(null);
+    setFormErrors({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

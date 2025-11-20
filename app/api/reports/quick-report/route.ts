@@ -1,3 +1,4 @@
+import { closeTenantConnection } from '@/lib/mongoose';
 import { generateQuickReportPDF } from '@/lib/pdf-generator';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { NextRequest, NextResponse } from 'next/server';
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
         $gte: startDate,
         $lte: endDate,
       },
-      isReverted: false,
+      isReverted: { $ne: true },
     }).lean();
 
     // Calculate sales summary
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
       cashAmount: 0,
       onlineAmount: 0,
       creditAmount: 0,
+      averageBillValue: 0,
     };
 
     // Category-wise sales map
@@ -117,12 +119,13 @@ export async function GET(request: NextRequest) {
       salesSummary.totalQuantity += bill.totalQuantityBottles || 0;
       salesSummary.totalVolumeML += bill.totalVolumeML || 0;
       salesSummary.subTotalAmount += bill.subTotalAmount || 0;
-      console.log("sub total", bill.subTotalAmount)
-      console.log("item discount", bill.itemDiscountAmount);
-      console.log("bill discount", bill.billDiscountAmount);
-      console.log("promotion discount", bill.promotionDiscountAmount);
-      console.log("total amount", bill.totalAmount)
-      salesSummary.totalDiscountAmount += (bill.itemDiscountAmount || 0) + (bill.billDiscountAmount || 0) + (bill.promotionDiscountAmount || 0);
+      
+      // Calculate total discount correctly
+      const itemDiscount = bill.itemDiscountAmount || 0;
+      const billDiscount = bill.billDiscountAmount || 0;
+      const promotionDiscount = bill.promotionDiscountAmount || 0;
+      salesSummary.totalDiscountAmount += itemDiscount + billDiscount + promotionDiscount;
+      
       salesSummary.totalAmount += bill.totalAmount || 0;
       salesSummary.cashAmount += bill.payment?.cashAmount || 0;
       salesSummary.onlineAmount += bill.payment?.onlineAmount || 0;
@@ -187,14 +190,14 @@ export async function GET(request: NextRequest) {
       if (bill.payment?.creditAmount && bill.payment.creditAmount > 0) {
         const customerId = bill.customerId || 'walk-in';
         const customerName = bill.customerName || 'Walk-in Customer';
-        if (!creditGivenMap.has(customerId)) {
-          creditGivenMap.set(customerId, {
+        if (!creditGivenMap.has(customerName)) {
+          creditGivenMap.set(customerName, {
             customerId,
             customerName,
             creditAmount: 0,
           });
         }
-        creditGivenMap.get(customerId).creditAmount += bill.payment.creditAmount;
+        creditGivenMap.get(customerName).creditAmount += bill.payment.creditAmount;
       }
     }
 
@@ -255,18 +258,21 @@ export async function GET(request: NextRequest) {
       creditCollectedSummary.onlineAmount += payment.onlineAmount || 0;
 
       // Customer-wise credit collected
-      const customerId = payment.customerId.toString();
-      const customerName = payment.customerName;
-      if (!creditCollectedSummary.customerWise.has(customerId)) {
-        creditCollectedSummary.customerWise.set(customerId, {
-          customerId,
+      const inferredCustomerId = payment.customerId?.toString?.();
+      const customerKey = inferredCustomerId || `${payment.customerName || 'Unknown'}-${payment._id?.toString?.() || Math.random().toString(36).slice(2)}`;
+      const customerName = payment.customerName || 'Unknown Customer';
+
+      if (!creditCollectedSummary.customerWise.has(customerKey)) {
+        creditCollectedSummary.customerWise.set(customerKey, {
+          customerId: inferredCustomerId || null,
           customerName,
           totalAmount: 0,
           cashAmount: 0,
           onlineAmount: 0,
         });
       }
-      const custData = creditCollectedSummary.customerWise.get(customerId);
+
+      const custData = creditCollectedSummary.customerWise.get(customerKey);
       custData.totalAmount += payment.totalAmount || 0;
       custData.cashAmount += payment.cashAmount || 0;
       custData.onlineAmount += payment.onlineAmount || 0;
@@ -351,6 +357,11 @@ export async function GET(request: NextRequest) {
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount);
 
+    // Calculate average bill value
+    if (bills.length > 0) {
+      salesSummary.averageBillValue = salesSummary.totalAmount / bills.length;
+    }
+
     // Create report data
     const reportData = {
       reportDate: date,
@@ -380,12 +391,14 @@ export async function GET(request: NextRequest) {
         totalExpenses: expenseSummary.totalAmount,
         totalCreditCollected: creditCollectedSummary.totalAmount,
         netCashFlow: (salesSummary.cashAmount + salesSummary.onlineAmount) - expenseSummary.totalAmount + creditCollectedSummary.totalAmount,
+        openingCash: 0, // Can be set from organization settings
+        closingCash: (salesSummary.cashAmount + creditCollectedSummary.cashAmount) - expenseSummary.cashAmount,
       },
     };
-
     // Generate PDF
     const pdfBuffer = generateQuickReportPDF(reportData);
 
+    closeTenantConnection(user.organizationId);
     // Return PDF as response
     return new NextResponse(pdfBuffer as any, {
       status: 200,

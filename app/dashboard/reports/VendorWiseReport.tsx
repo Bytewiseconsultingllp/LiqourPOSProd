@@ -15,6 +15,7 @@ import {
 } from '@/app/dashboard/components/ui/table';
 import { Calendar, Download, Loader2, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { downloadCSVFile } from '@/lib/download-report';
 
 interface VendorSalesData {
   vendorId: string;
@@ -151,6 +152,29 @@ export function VendorWiseReport() {
   const totalQuantity = filteredData.reduce((sum, v) => sum + v.totalQuantity, 0);
   const totalVolume = filteredData.reduce((sum, v) => sum + v.totalVolumeML, 0);
 
+  const handleDownloadCSV = () => {
+    if (filteredData.length === 0) {
+      toast.error('No vendor data to download');
+      return;
+    }
+
+    const rows: (string | number)[][] = [
+      ['Vendor Name', 'Bills', 'Quantity', 'Volume (L)', 'Amount (₹)'],
+      ...filteredData.map((vendor) => [
+        vendor.vendorName,
+        vendor.billCount,
+        vendor.totalQuantity,
+        Number((vendor.totalVolumeML / 1000).toFixed(2)),
+        Number(vendor.totalAmount.toFixed(2)),
+      ]),
+    ];
+
+    downloadCSVFile(
+      `vendor_report_${fromDate}_to_${toDate}.csv`,
+      rows
+    );
+  };
+
   if (loading) {
     return (
       <Card>
@@ -164,17 +188,27 @@ export function VendorWiseReport() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <CardTitle className="text-2xl">Vendor-Wise Sales Report</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Sales breakdown by vendor
             </p>
           </div>
-          <Button onClick={downloadTodayReport} className="gap-2">
-            <Download className="h-4 w-4" />
-            Today's Quick Report
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDownloadCSV}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download CSV
+            </Button>
+            <Button onClick={downloadTodayReport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Today's Quick Report
+            </Button>
+          </div>
         </div>
 
         {/* Date Range Selector */}

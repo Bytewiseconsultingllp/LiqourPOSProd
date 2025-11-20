@@ -1,4 +1,4 @@
-import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
+import { getTenantConnection, getTenantModel, closeTenantConnection } from '@/lib/tenant-db';
 import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -20,8 +20,11 @@ function getUserFromToken(request: NextRequest): any {
 }
 
 export async function GET(request: NextRequest) {
+  let organizationId: string | null = null;
+  let tenantConnection: mongoose.Connection | null = null;
   try {
     const user = getUserFromToken(request);
+    organizationId = user.organizationId;
     const { searchParams } = new URL(request.url);
     const fromDate = searchParams.get('fromDate');
     const toDate = searchParams.get('toDate');
@@ -39,7 +42,9 @@ export async function GET(request: NextRequest) {
 
     const endDate = new Date(toDate);
     endDate.setDate(endDate.getDate() + 1);
-    endDate.setHours(3, 59, 59, 999); const tenantConnection = await getTenantConnection(user.organizationId);
+    endDate.setHours(3, 59, 59, 999);
+
+    tenantConnection = await getTenantConnection(user.organizationId);
     const Bill = getTenantModel(tenantConnection, 'Bill');
     const Vendor = getTenantModel(tenantConnection, 'Vendor');
 
@@ -78,7 +83,7 @@ export async function GET(request: NextRequest) {
 
         // Aggregate vendor totals from items
         vendorData.totalQuantity += item.quantity || 0;
-        vendorData.totalAmount += (item.subTotal || 0) - (item.itemDiscountAmount || 0) - (item.discountAmount || 0)-(item.promotionDiscountAmount || 0);
+        vendorData.totalAmount += item.finalAmount || 0;
         vendorData.totalVolumeML += (item.quantity || 0) * (item.volumePerUnitML || 0);
         vendorData.billIds.add(billId);
 
@@ -157,5 +162,13 @@ export async function GET(request: NextRequest) {
       { error: error.message || 'Failed to fetch vendor-wise report' },
       { status: 500 }
     );
+  } finally {
+    if (organizationId) {
+      try {
+        await closeTenantConnection(organizationId);
+      } catch (closeError) {
+        console.error('Error closing tenant connection:', closeError);
+      }
+    }
   }
 }

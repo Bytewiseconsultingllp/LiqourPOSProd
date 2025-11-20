@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection } from '@/lib/tenant-db';
 import { getBillModel } from '@/models/Bill';
+import { closeTenantConnection } from '@/lib/mongoose';
 
 /**
  * GET /api/sales
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
 
     const total = await Bill.countDocuments({});
 
+    closeTenantConnection(tenantId);
     return NextResponse.json({
       success: true,
       data: sales,

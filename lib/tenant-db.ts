@@ -6,8 +6,18 @@ if (!process.env.MONGODB_URI) {
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// Store tenant connections
-const tenantConnections = new Map<string, Connection>();
+// Store tenant connections with metadata
+interface TenantConnectionInfo {
+  connection: Connection;
+  lastUsed: Date;
+  useCount: number;
+}
+
+const tenantConnections = new Map<string, TenantConnectionInfo>();
+
+// Configuration
+const CONNECTION_IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const MAX_TENANT_CONNECTIONS = 50; // Maximum number of tenant connections
 
 // Store model schemas for registration (persist on global to survive hot-reloads)
 declare global {
@@ -60,12 +70,21 @@ export async function getTenantConnection(organizationId: string): Promise<Conne
   
   // Check if connection already exists and is active
   if (tenantConnections.has(organizationId)) {
-    const conn = tenantConnections.get(organizationId)!;
-    if (conn.readyState === 1) {
-      return conn;
+    const connInfo = tenantConnections.get(organizationId)!;
+    if (connInfo.connection.readyState === 1) {
+      // Update last used time and increment use count
+      connInfo.lastUsed = new Date();
+      connInfo.useCount++;
+      return connInfo.connection;
     }
     // Connection is stale, remove it
+    console.log(`🔄 Removing stale connection for tenant: ${organizationId}`);
     tenantConnections.delete(organizationId);
+  }
+
+  // Clean up old connections if we're at the limit
+  if (tenantConnections.size >= MAX_TENANT_CONNECTIONS) {
+    await cleanupIdleConnections();
   }
 
   // Create new connection for this tenant
@@ -87,6 +106,7 @@ export async function getTenantConnection(organizationId: string): Promise<Conne
       socketTimeoutMS: 45000,
       serverSelectionTimeoutMS: 30000,
       connectTimeoutMS: 30000,
+      maxIdleTimeMS: 60000, // Close idle connections after 60 seconds
       // SSL/TLS Configuration
       ssl: true,
       retryWrites: true,
@@ -101,13 +121,17 @@ export async function getTenantConnection(organizationId: string): Promise<Conne
       connection.once('error', (err) => reject(err));
     });
 
-    // Store the connection
-    tenantConnections.set(organizationId, connection);
+    // Store the connection with metadata
+    tenantConnections.set(organizationId, {
+      connection,
+      lastUsed: new Date(),
+      useCount: 1,
+    });
 
     // Register all models for this tenant connection
     registerModelsForTenant(connection);
 
-    console.log(`✅ Tenant database connected: ${dbName}`);
+    console.log(`✅ Tenant database connected: ${dbName} (Total connections: ${tenantConnections.size})`);
     return connection;
   } catch (error) {
     console.error(`❌ Failed to connect to tenant database: ${dbName}`, error);
@@ -168,12 +192,41 @@ export function getTenantModel<T = any>(
 }
 
 /**
+ * Clean up idle connections that haven't been used recently
+ */
+async function cleanupIdleConnections(): Promise<number> {
+  const now = new Date().getTime();
+  let cleanedCount = 0;
+
+  for (const [orgId, connInfo] of tenantConnections.entries()) {
+    const idleTime = now - connInfo.lastUsed.getTime();
+    
+    if (idleTime > CONNECTION_IDLE_TIMEOUT) {
+      console.log(`🧹 Closing idle connection for tenant: ${orgId} (idle for ${Math.round(idleTime / 1000)}s)`);
+      try {
+        await connInfo.connection.close();
+        tenantConnections.delete(orgId);
+        cleanedCount++;
+      } catch (error) {
+        console.error(`Failed to close connection for tenant ${orgId}:`, error);
+      }
+    }
+  }
+
+  if (cleanedCount > 0) {
+    console.log(`✅ Cleaned up ${cleanedCount} idle connections (${tenantConnections.size} remaining)`);
+  }
+
+  return cleanedCount;
+}
+
+/**
  * Close a specific tenant connection
  */
 export async function closeTenantConnection(organizationId: string): Promise<void> {
-  const connection = tenantConnections.get(organizationId);
-  if (connection) {
-    await connection.close();
+  const connInfo = tenantConnections.get(organizationId);
+  if (connInfo) {
+    await connInfo.connection.close();
     tenantConnections.delete(organizationId);
     console.log(`🔌 Tenant database disconnected: tenant_${organizationId}`);
   }
@@ -197,18 +250,60 @@ export function getConnectionStats() {
   return {
     activeConnections: tenantConnections.size,
     registeredModels: modelSchemas.size,
-    connections: Array.from(tenantConnections.entries()).map(([orgId, conn]) => ({
+    maxConnections: MAX_TENANT_CONNECTIONS,
+    connections: Array.from(tenantConnections.entries()).map(([orgId, connInfo]) => ({
       organizationId: orgId,
-      readyState: conn.readyState,
-      name: conn.name,
+      readyState: connInfo.connection.readyState,
+      name: connInfo.connection.name,
+      lastUsed: connInfo.lastUsed,
+      useCount: connInfo.useCount,
+      idleTime: Math.round((new Date().getTime() - connInfo.lastUsed.getTime()) / 1000), // in seconds
     })),
   };
+}
+
+// Periodic cleanup of idle connections
+let cleanupInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Start periodic cleanup of idle connections
+ */
+export function startPeriodicCleanup(intervalMs: number = 2 * 60 * 1000) {
+  if (cleanupInterval) {
+    console.log('⚠️  Periodic cleanup already running');
+    return;
+  }
+
+  console.log(`🔄 Starting periodic connection cleanup (interval: ${intervalMs}ms)`);
+  cleanupInterval = setInterval(async () => {
+    await cleanupIdleConnections();
+  }, intervalMs);
+}
+
+/**
+ * Stop periodic cleanup
+ */
+export function stopPeriodicCleanup() {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+    console.log('🔄 Periodic cleanup stopped');
+  }
+}
+
+// Start periodic cleanup automatically
+if (typeof process !== 'undefined') {
+  // In development, run cleanup every 2 minutes
+  // In production, run every 5 minutes
+  const interval = process.env.NODE_ENV === 'development' ? 2 * 60 * 1000 : 5 * 60 * 1000;
+  startPeriodicCleanup(interval);
 }
 
 // Cleanup on process termination
 // Only register cleanup handlers in Node.js environment (not in Edge runtime)
 if (typeof process !== 'undefined' && process.on) {
   const cleanup = async () => {
+    stopPeriodicCleanup();
     await closeAllTenantConnections();
     process.exit(0);
   };

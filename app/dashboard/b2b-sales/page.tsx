@@ -78,7 +78,7 @@ const B2BSalesPage = () => {
 
   // Filter only B2B customers
   const customers = useMemo(() => {
-    return allCustomers.filter(c => c.type === 'B2B' || c._id === 'walk-in');
+    return allCustomers.filter((c) => c.type === "B2B");
   }, [allCustomers]);
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
@@ -143,28 +143,9 @@ const B2BSalesPage = () => {
   // Auto-select walk-in customer when customers load (only once)
   useEffect(() => {
     if (customers.length > 0 && !selectedCustomer) {
-      const walkInCustomer = customers.find(c => c._id === "walk-in" || c.name === "Walk-in Customer");
-      if (walkInCustomer) {
-        setSelectedCustomer(walkInCustomer);
-      } else {
-        // Create walk-in customer if not found
-        const walkIn: Customer = {
-          _id: 'walk-in',
-          name: 'Walk-in Customer',
-          type: 'Walk-In',
-          contactInfo: { phone: '', email: '', address: '' },
-          creditLimit: 0,
-          outstandingBalance: 0,
-          walletBalance: 0,
-          isActive: true,
-          organizationId: '',
-          createdAt: new Date().toISOString(),
-          maxDiscountPercentage: 100,
-        };
-        setSelectedCustomer(walkIn);
-      }
+      setSelectedCustomer(customers[0]);
     }
-  }, [customers]);
+  }, [customers, selectedCustomer]);
 
   // Get latest purchase price for a product
   const getLatestPurchasePrice = (product: ProductDetails): number => {
@@ -176,7 +157,17 @@ const B2BSalesPage = () => {
     const sorted = [...product.purchasePricePerUnit].sort((a, b) =>
       new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime()
     );
-    return sorted[0].purchasePrice || product.pricePerUnit;
+    
+    const purchasePricePerUnit = sorted[0].purchasePrice || product.pricePerUnit;
+    
+    // If bottlesPerCaret is available, the purchase price is per caret, so divide by bottles
+    // to get price per bottle
+    if (product.bottlesPerCaret && product.bottlesPerCaret > 0) {
+      return purchasePricePerUnit / product.bottlesPerCaret;
+    }
+    
+    // Otherwise, assume it's already per bottle
+    return purchasePricePerUnit;
   };
 
   const handleProductSelect = (product: ProductDetails) => {
@@ -267,6 +258,11 @@ const B2BSalesPage = () => {
       return;
     }
 
+    if (selectedCustomer.type !== "B2B") {
+      toast.error("B2B Sales can only be completed for B2B customers");
+      return;
+    }
+
     if (cartItems.length === 0) {
       toast.error("Cart is empty");
       return;
@@ -311,10 +307,10 @@ const B2BSalesPage = () => {
       }));
 
       const billData = {
-        customerId: selectedCustomer._id === "walk-in" ? undefined : selectedCustomer._id,
+        customerId: selectedCustomer._id,
         customerName: selectedCustomer.name,
         customerPhone: selectedCustomer.contactInfo?.phone || "",
-        customerType: selectedCustomer._id === "walk-in" ? "walk-in" : "registered",
+        customerType: "B2B",
         items: billItems,
         totalQuantityBottles,
         totalVolumeML,
@@ -429,6 +425,7 @@ const B2BSalesPage = () => {
                     customers={customers}
                     selectedCustomer={selectedCustomer}
                     onSelectCustomer={setSelectedCustomer}
+                    showWalkInButton={false}
                   />
                 </Card>
               ) : (
@@ -455,8 +452,7 @@ const B2BSalesPage = () => {
                           </div>
                         )}
 
-                        {selectedCustomer._id !== "walk-in" &&
-                          selectedCustomer.type !== "Walk-In" && (
+                        {selectedCustomer.type === "B2B" && (
                             <div className="flex items-center gap-2">
                               <CreditCardIcon className="h-4 w-4 text-muted-foreground" />
                               <div>
@@ -658,6 +654,7 @@ const B2BSalesPage = () => {
       {viewingSubBills && (
         <SubBillsViewer
           sale={viewingSubBills}
+          customer={selectedCustomer}
           onClose={() => setViewingSubBills(null)}
         />
       )}

@@ -5,6 +5,7 @@ import { registerAllModels } from '@/lib/model-registry';
 import { getBillModel } from '@/models/Bill';
 import { getVendorStockModel } from '@/models/VendorStock';
 import mongoose from 'mongoose';
+import { closeTenantConnection } from '@/lib/mongoose';
 
 /**
  * GET /api/bills/[id]
@@ -268,6 +269,7 @@ export async function PUT(
       await session.commitTransaction();
     }
 
+    closeTenantConnection(user.organizationId);
     return NextResponse.json({
       success: true,
       data: updatedBill,

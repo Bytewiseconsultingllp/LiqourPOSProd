@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '@/app/dashboard/components/ui/button';
 import { apiFetch } from '@/lib/api-client';
 import { Input } from '@/app/dashboard/components/ui/input';
-import { Calendar, Loader2, TrendingUp, Package, DollarSign, Receipt } from 'lucide-react';
+import { Calendar, Loader2, TrendingUp, Package, DollarSign, Receipt, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { downloadCSVFile } from '@/lib/download-report';
 
 interface SalesSummary {
   totalBills: number;
@@ -81,6 +83,58 @@ export function SalesSummaryReport() {
     }
   };
 
+  const handleDownloadCSV = () => {
+    if (!data) {
+      toast.error('No data to download');
+      return;
+    }
+
+    const rows: (string | number)[][] = [
+      ['Sales Summary Report'],
+      ['Period', `${fromDate} to ${toDate}`],
+      [''],
+      ['Metric', 'Value'],
+      ['Total Bills', data.totalBills],
+      ['Total Quantity', data.totalQuantity],
+      ['Total Volume (L)', Number((data.totalVolumeML / 1000).toFixed(2))],
+      ['Subtotal Amount', Number(data.subTotalAmount.toFixed(2))],
+      ['Total Discount', Number(data.totalDiscountAmount.toFixed(2))],
+      ['Total Amount', Number(data.totalAmount.toFixed(2))],
+      [''],
+      ['Payment Breakdown', ''],
+      ['Cash', Number(data.cashAmount.toFixed(2))],
+      ['Online', Number(data.onlineAmount.toFixed(2))],
+      ['Credit', Number(data.creditAmount.toFixed(2))],
+      [''],
+      ['Top 5 Products', 'Quantity', 'Amount'],
+    ];
+
+    data.topProducts.forEach((product) => {
+      rows.push([
+        product.productName,
+        product.quantity,
+        Number(product.amount.toFixed(2)),
+      ]);
+    });
+
+    rows.push(['']);
+    rows.push(['Top 5 Categories', 'Quantity', 'Amount']);
+
+    data.topCategories.forEach((category) => {
+      rows.push([
+        category.category,
+        category.quantity,
+        Number(category.amount.toFixed(2)),
+      ]);
+    });
+
+    downloadCSVFile(
+      `sales_summary_${fromDate}_to_${toDate}.csv`,
+      rows
+    );
+    toast.success('Report downloaded successfully');
+  };
+
   if (loading) {
     return (
       <Card>
@@ -95,10 +149,24 @@ export function SalesSummaryReport() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Sales Summary Report</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Comprehensive overview of sales performance
-          </p>
+          <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
+            <div>
+              <CardTitle className="text-2xl">Sales Summary Report</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Comprehensive overview of sales performance
+              </p>
+            </div>
+            {data && (
+              <Button
+                onClick={handleDownloadCSV}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download CSV
+              </Button>
+            )}
+          </div>
 
           {/* Date Range Selector */}
           <div className="grid grid-cols-2 gap-4 mt-4">

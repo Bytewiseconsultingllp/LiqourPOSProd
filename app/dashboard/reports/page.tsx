@@ -8,9 +8,11 @@ import {
   ShoppingCart, 
   BarChart3,
   Layers,
-  Droplet
+  Droplet,
+  Calendar
 } from 'lucide-react';
 import { useState } from 'react';
+import { TodayReport } from './TodayReport';
 import { VendorWiseReport } from './VendorWiseReport';
 import { ProductWiseReport } from './ProductWiseReport';
 import { CategoryWiseReport } from './CategoryWiseReport';
@@ -20,7 +22,7 @@ import { SalesSummaryReport } from './SalesSummaryReport';
 import { PurchaseSummaryReport } from './PurchaseSummaryReport';
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState('vendor');
+  const [activeTab, setActiveTab] = useState('today');
 
   return (
     <div className="min-h-screen bg-background">
@@ -37,7 +39,11 @@ export default function ReportsPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-7 mb-6">
+          <TabsList className="grid w-full grid-cols-8 mb-6">
+            <TabsTrigger value="today" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Today
+            </TabsTrigger>
             <TabsTrigger value="vendor" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Vendor
@@ -67,6 +73,10 @@ export default function ReportsPage() {
               Purchases
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="today">
+            <TodayReport />
+          </TabsContent>
 
           <TabsContent value="vendor">
             <VendorWiseReport />

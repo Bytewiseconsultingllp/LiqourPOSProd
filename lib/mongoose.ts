@@ -45,6 +45,7 @@ export async function connectToDatabase() {
       socketTimeoutMS: 45000,
       serverSelectionTimeoutMS: 30000, // Increased to 30 seconds
       connectTimeoutMS: 30000,
+      maxIdleTimeMS: 60000, // Close idle connections after 60 seconds
       // SSL/TLS Configuration - Try with less strict validation for Atlas
       ssl: true,
       retryWrites: true,
@@ -53,7 +54,7 @@ export async function connectToDatabase() {
       readPreference: 'primaryPreferred' as const,
     };
 
-    cached.promise = mongoose.connect(connectionUri, opts);
+    cached.promise = mongoose.connect(connectionUri);
   }
 
   try {
@@ -98,6 +99,7 @@ export async function getTenantConnection(tenantId: string): Promise<typeof mong
     socketTimeoutMS: 45000,
     serverSelectionTimeoutMS: 30000,
     connectTimeoutMS: 30000,
+    maxIdleTimeMS: 60000,
     // SSL/TLS Configuration
     ssl: true,
     retryWrites: true,

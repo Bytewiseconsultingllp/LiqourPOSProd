@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantConnection, getTenantModel } from '@/lib/tenant-db';
 import { registerAllModels } from '@/lib/model-registry';
+import { closeTenantConnection } from '@/lib/mongoose';
 
 function getUserFromToken(request: NextRequest): any {
   const authHeader = request.headers.get('authorization');
@@ -58,6 +59,7 @@ export async function GET(
       .sort({ saleDate: -1 })
       .lean();
 
+    closeTenantConnection(user.organizationId);
     return NextResponse.json({
       success: true,
       data: bills,

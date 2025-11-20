@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Label } from '../../components/ui/label';
+import { getPlaceholder, validateForm, validateField, hasErrors } from '@/lib/formValidations';
 
 
 const ensurePriorityVendorExists = async (): Promise<boolean> => {
@@ -54,6 +55,12 @@ export default function ProductsManagementPage() {
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [bulkUploadResults, setBulkUploadResults] = useState<any>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [pendingBulkProducts, setPendingBulkProducts] = useState<any[]>([]);
+  const [bulkUploadValidationErrors, setBulkUploadValidationErrors] = useState<string[]>([]);
+  const [isBulkUploadReady, setIsBulkUploadReady] = useState(false);
+  const [selectedUploadFile, setSelectedUploadFile] = useState<string>('');
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -69,6 +76,32 @@ export default function ProductsManagementPage() {
     bottlesPerCaret: '',
     barcodes: [] as Barcode[],
   });
+  const updateProductFormField = (field: string, value: string) => {
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      setFormErrors((prevErrors) => {
+        const updated = { ...prevErrors };
+        const error = validateField('product', field, value, next);
+        if (error) {
+          updated[field] = error;
+        } else {
+          delete updated[field];
+        }
+        return updated;
+      });
+      return next;
+    });
+  };
+
+  const validateProductForm = () => {
+    const errors = validateForm('product', formData);
+    if (hasErrors(errors)) {
+      setFormErrors(errors);
+      toast.error('Please fix the highlighted errors before continuing.');
+      return false;
+    }
+    return true;
+  };
 
   // Dropdown options
   const categoryOptions = ['Whisky', 'Rum', 'Vodka', 'Wine', 'Brandy', 'Gin', 'Beer', 'Tequila'];
@@ -99,6 +132,10 @@ export default function ProductsManagementPage() {
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (!validateProductForm()) {
+      return;
+    }
 
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) return;
@@ -281,6 +318,10 @@ export default function ProductsManagementPage() {
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
+
+    if (!validateProductForm()) {
+      return;
+    }
 
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) return;
@@ -525,32 +566,36 @@ export default function ProductsManagementPage() {
               <div className="space-y-1">
                 <Label>Product Name</Label>
                 <Input
-                  placeholder="Product Name"
+                  placeholder={getPlaceholder('product', 'name') || 'Product name'}
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => updateProductFormField('name', e.target.value)}
+                  className={formErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
                   required
                 />
+                {formErrors.name && (
+                  <p className="text-xs text-red-500">{formErrors.name}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Brand</Label>
                 <Input
-                  placeholder="Brand"
+                  placeholder={getPlaceholder('product', 'brand') || 'Brand'}
                   value={formData.brand}
-                  onChange={(e) =>
-                    setFormData({ ...formData, brand: e.target.value })
-                  }
+                  onChange={(e) => updateProductFormField('brand', e.target.value)}
+                  className={formErrors.brand ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {formErrors.brand && (
+                  <p className="text-xs text-red-500">{formErrors.brand}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Category</Label>
                 <Select
                   value={formData.category}
-                  onValueChange={(val) => setFormData({ ...formData, category: val })}
+                  onValueChange={(val) => updateProductFormField('category', val)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                  <SelectTrigger className={formErrors.category ? 'border-red-500 focus:ring-red-500' : ''}>
+                    <SelectValue placeholder={getPlaceholder('product', 'category') || 'Select category'} />
                   </SelectTrigger>
                   <SelectContent>
                     {categoryOptions.map((c) => (
@@ -558,37 +603,44 @@ export default function ProductsManagementPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {formErrors.category && (
+                  <p className="text-xs text-red-500">{formErrors.category}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>SKU</Label>
                 <Input
-                  placeholder="SKU"
+                  placeholder={getPlaceholder('product', 'sku') || 'SKU'}
                   value={formData.sku}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sku: e.target.value })
-                  }
+                  onChange={(e) => updateProductFormField('sku', e.target.value)}
+                  className={formErrors.sku ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {formErrors.sku && (
+                  <p className="text-xs text-red-500">{formErrors.sku}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>MRP</Label>
                 <Input
-                  placeholder="Price per Unit"
+                  placeholder={getPlaceholder('product', 'pricePerUnit') || 'Price per Unit'}
                   type="number"
                   value={formData.pricePerUnit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pricePerUnit: e.target.value })
-                  }
+                  onChange={(e) => updateProductFormField('pricePerUnit', e.target.value)}
+                  className={formErrors.pricePerUnit ? 'border-red-500 focus-visible:ring-red-500' : ''}
                   required
                 />
+                {formErrors.pricePerUnit && (
+                  <p className="text-xs text-red-500">{formErrors.pricePerUnit}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Volume (ML)</Label>
                 <Select
                   value={formData.volumeML}
-                  onValueChange={(val) => setFormData({ ...formData, volumeML: val })}
+                  onValueChange={(val) => updateProductFormField('volumeML', val)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select volume" />
+                  <SelectTrigger className={formErrors.volumeML ? 'border-red-500 focus:ring-red-500' : ''}>
+                    <SelectValue placeholder={getPlaceholder('product', 'volumeML') || 'Select volume'} />
                   </SelectTrigger>
                   <SelectContent>
                     {volumeOptions.map((v) => (
@@ -596,55 +648,66 @@ export default function ProductsManagementPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {formErrors.volumeML && (
+                  <p className="text-xs text-red-500">{formErrors.volumeML}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Current Stock</Label>
                 <Input
-                  disabled={showCreateModal ? false : true}
-                  placeholder="Current Stock"
+                  disabled={!showCreateModal}
+                  placeholder={getPlaceholder('product', 'currentStock') || 'Current stock'}
                   type="number"
                   value={formData.currentStock}
-                  onChange={(e) =>
-                    setFormData({ ...formData, currentStock: e.target.value })
-                  }
+                  onChange={(e) => updateProductFormField('currentStock', e.target.value)}
+                  className={formErrors.currentStock ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {formErrors.currentStock && (
+                  <p className="text-xs text-red-500">{formErrors.currentStock}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Reorder Level</Label>
                 <Input
-                  placeholder="Reorder Level"
+                  placeholder={getPlaceholder('product', 'reorderLevel') || 'Reorder level'}
                   type="number"
                   value={formData.reorderLevel}
-                  onChange={(e) =>
-                    setFormData({ ...formData, reorderLevel: e.target.value })
-                  }
+                  onChange={(e) => updateProductFormField('reorderLevel', e.target.value)}
+                  className={formErrors.reorderLevel ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {formErrors.reorderLevel && (
+                  <p className="text-xs text-red-500">{formErrors.reorderLevel}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Bottles per caret</Label>
                 <Input
-                  placeholder="Bottles per caret"
+                  placeholder={getPlaceholder('product', 'bottlesPerCaret') || 'Bottles per caret'}
                   type="number"
                   value={formData.bottlesPerCaret}
-                  onChange={(e) =>
-                    setFormData({ ...formData, bottlesPerCaret: e.target.value })
-                  }
+                  onChange={(e) => updateProductFormField('bottlesPerCaret', e.target.value)}
+                  className={formErrors.bottlesPerCaret ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {formErrors.bottlesPerCaret && (
+                  <p className="text-xs text-red-500">{formErrors.bottlesPerCaret}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Purchase Price per Caret</Label>
                 <Input
-                  placeholder="Purchase Price per Caret"
+                  placeholder={getPlaceholder('product', 'purchasePricePerCaret') || 'Purchase price per caret'}
                   type="number"
                   step="0.01"
                   value={formData.purchasePricePerCaret}
-                  onChange={(e) =>
-                    setFormData({ ...formData, purchasePricePerCaret: e.target.value })
-                  }
+                  onChange={(e) => updateProductFormField('purchasePricePerCaret', e.target.value)}
+                  className={formErrors.purchasePricePerCaret ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {formErrors.purchasePricePerCaret && (
+                  <p className="text-xs text-red-500">{formErrors.purchasePricePerCaret}</p>
+                )}
                 {formData.purchasePricePerCaret && formData.bottlesPerCaret && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Per Bottle: ₹{(parseFloat(formData.purchasePricePerCaret) / parseInt(formData.bottlesPerCaret)).toFixed(2)}
+                    Per Bottle: ₹{(parseFloat(formData.purchasePricePerCaret) / Math.max(parseInt(formData.bottlesPerCaret, 10) || 1, 1)).toFixed(2)}
                   </p>
                 )}
               </div>

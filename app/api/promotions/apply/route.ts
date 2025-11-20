@@ -46,6 +46,44 @@ export async function POST(request: NextRequest) {
 
     const applicablePromotions: any[] = [];
 
+    const calculateEligibleItems = (promotion: any) => {
+      if (promotion.applicableOn === 'all') {
+        return items;
+      }
+
+      if (promotion.applicableOn === 'category') {
+        return items.filter((item: CartItem) =>
+          promotion.categoryIds?.includes(item.category)
+        );
+      }
+
+      if (promotion.applicableOn === 'product') {
+        return items.filter((item: CartItem) =>
+          promotion.productIds?.includes(item.productId)
+        );
+      }
+
+      if (promotion.applicableOn === 'brand') {
+        return items.filter((item: CartItem) =>
+          promotion.brandNames?.includes(item.brand)
+        );
+      }
+
+      return [];
+    };
+
+    const calculateEligibleSubtotal = (eligibleItems: CartItem[]) => {
+      return eligibleItems.reduce((sum: number, item: CartItem) => {
+        const quantity = Number.isFinite(item.quantity) ? item.quantity : 0;
+        const rate = Number.isFinite(item.rate) ? item.rate : 0;
+        if (quantity > 0 && rate > 0) {
+          return sum + rate * quantity;
+        }
+        const fallbackSubtotal = Number.isFinite(item.subTotal) ? item.subTotal : 0;
+        return sum + fallbackSubtotal;
+      }, 0);
+    };
+
     for (const promotion of activePromotions) {
       let isApplicable = false;
       let discountAmount = 0;
@@ -56,45 +94,25 @@ export async function POST(request: NextRequest) {
       }
 
       // Check applicability
+      const eligibleItems = calculateEligibleItems(promotion);
+      const eligibleSubtotal = calculateEligibleSubtotal(eligibleItems);
+
       if (promotion.applicableOn === 'all') {
-        isApplicable = true;
-      } else if (promotion.applicableOn === 'category') {
-        isApplicable = items.some((item: CartItem) =>
-          promotion.categoryIds?.includes(item.category)
-        );
-      } else if (promotion.applicableOn === 'product') {
-        isApplicable = items.some((item: CartItem) =>
-          promotion.productIds?.includes(item.productId)
-        );
-      } else if (promotion.applicableOn === 'brand') {
-        isApplicable = items.some((item: CartItem) =>
-          promotion.brandNames?.includes(item.brand)
-        );
+        isApplicable = items.length > 0;
+      } else {
+        isApplicable = eligibleItems.length > 0;
       }
 
-      if (!isApplicable) continue;
+      if (!isApplicable || eligibleSubtotal <= 0) continue;
 
       // Calculate discount based on type
       if (promotion.type === 'percentage') {
-        discountAmount = (totalAmount * (promotion.discountPercentage || 0)) / 100;
+        discountAmount = (eligibleSubtotal * (promotion.discountPercentage || 0)) / 100;
       } else if (promotion.type === 'fixed') {
-        discountAmount = promotion.discountAmount || 0;
+        const fixedAmount = promotion.discountAmount || 0;
+        discountAmount = Math.min(fixedAmount, eligibleSubtotal);
       } else if (promotion.type === 'buy_x_get_y') {
         // For buy X get Y, calculate based on eligible items
-        const eligibleItems = items.filter((item: CartItem) => {
-          if (promotion.applicableOn === 'all') return true;
-          if (promotion.applicableOn === 'category') {
-            return promotion.categoryIds?.includes(item.category);
-          }
-          if (promotion.applicableOn === 'product') {
-            return promotion.productIds?.includes(item.productId);
-          }
-          if (promotion.applicableOn === 'brand') {
-            return promotion.brandNames?.includes(item.brand);
-          }
-          return false;
-        });
-
         const totalEligibleQty = eligibleItems.reduce(
           (sum: number, item: CartItem) => sum + item.quantity,
           0

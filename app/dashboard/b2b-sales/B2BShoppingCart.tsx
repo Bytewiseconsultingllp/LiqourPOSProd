@@ -50,7 +50,7 @@ export function B2BShoppingCart({
   const grandTotal = subtotal + vatAmount + tcsAmount;
 
   // Calculate available credit for customer
-  const availableCredit = customer && customer._id !== "walk-in"
+  const availableCredit = customer
     ? Math.max(0, (customer.creditLimit || 0) - (customer.outstandingBalance || 0))
     : 0;
 
@@ -163,11 +163,6 @@ export function B2BShoppingCart({
 
     if (creditAmount > availableCredit) {
       toast.error(`Credit amount (₹${creditAmount.toFixed(2)}) exceeds available credit (₹${availableCredit.toFixed(2)})`);
-      return;
-    }
-
-    if (paymentMethod === "credit" && (!customer || customer._id === "walk-in")) {
-      toast.error("Cannot process credit payment for walk-in customer");
       return;
     }
 
@@ -304,7 +299,7 @@ export function B2BShoppingCart({
                 <TabsTrigger value="cash">Cash/Online</TabsTrigger>
                 <TabsTrigger 
                   value="credit"
-                  disabled={!customer || customer._id === "walk-in"}
+                  disabled={!customer}
                 >
                   Credit (Split Payment)
                 </TabsTrigger>
@@ -352,7 +347,7 @@ export function B2BShoppingCart({
               </TabsContent>
 
               <TabsContent value="credit" className="space-y-4">
-                {customer && customer._id !== "walk-in" && (
+                {customer && (
                   <>
                     <div className="bg-muted p-3 rounded space-y-1">
                       <div className="flex justify-between text-sm">
