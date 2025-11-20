@@ -45,12 +45,16 @@ interface ThermalBillPrintProps {
   billData: BillData;
   onClose: () => void;
   billType?: 'main' | 'sub';
+  qrSrc?: string | null;
+  paymentMessage?: string;
 }
 
 export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
   billData,
   onClose,
   billType = 'main',
+  qrSrc,
+  paymentMessage,
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState<BillFieldSettings | null>(null);
@@ -436,6 +440,45 @@ export const ThermalBillPrint: React.FC<ThermalBillPrintProps> = ({
                   <div className="row">
                     <span>Credit:</span>
                     <span>₹{billData.payment.creditAmount.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Payment Instructions & QR Code */}
+            {(qrSrc || paymentMessage) && (
+              <div style={{ 
+                textAlign: 'center', 
+                marginTop: '10px', 
+                paddingTop: '10px', 
+                borderTop: '1px dashed #000' 
+              }}>
+                {qrSrc && (
+                  <>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>
+                      Scan to Pay
+                    </div>
+                    <img 
+                      src={qrSrc} 
+                      alt="Payment QR Code" 
+                      style={{ 
+                        width: '120px', 
+                        height: '120px', 
+                        margin: '0 auto',
+                        display: 'block',
+                        marginBottom: '5px'
+                      }} 
+                    />
+                  </>
+                )}
+                {paymentMessage && (
+                  <div style={{ 
+                    fontSize: '9px', 
+                    marginTop: '5px',
+                    whiteSpace: 'pre-line',
+                    fontWeight: qrSrc ? 'normal' : 'bold'
+                  }}>
+                    {paymentMessage}
                   </div>
                 )}
               </div>

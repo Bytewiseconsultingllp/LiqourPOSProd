@@ -6,6 +6,7 @@ import { getPrintSettings, getPrintSettingsSync } from '@/lib/print-settings';
 import { BillFieldSettings } from '@/types/print-settings';
 import { apiFetch } from '@/lib/api-client';
 import { Customer } from '@/types/customer';
+import { Bill } from '@/types/bill';
 
 interface SubBill {
   items: any[];
@@ -30,12 +31,13 @@ interface Sale {
 
 interface BatchPrintSubBillsProps {
   customer: Customer | null;
-  sale: Sale;
+  sale: Bill;
   onClose: () => void;
-  qrSrc: string | null;
+  qrSrc: any;
+  paymentMessage?: string;
 }
 
-export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ customer, sale, onClose, qrSrc }) => {
+export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ customer, sale, onClose, qrSrc, paymentMessage }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState<BillFieldSettings | null>(null);
   
@@ -411,11 +413,26 @@ export const BatchPrintSubBills: React.FC<BatchPrintSubBillsProps> = ({ customer
           </div>
 
         )}
-        {qrSrc && (
+        {(qrSrc || paymentMessage) && (
           <div className="footer" style={{ borderTop: 'none', marginTop: '8px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-              <img src={qrSrc} alt="Payment QR" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
-              <div>Scan to Pay</div>
+              {qrSrc && (
+                <>
+                  <img src={qrSrc} alt="Payment QR" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+                  <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Scan to Pay</div>
+                </>
+              )}
+              {paymentMessage && (
+                <div style={{ 
+                  fontSize: '9px', 
+                  marginTop: '5px',
+                  whiteSpace: 'pre-line',
+                  textAlign: 'center',
+                  fontWeight: qrSrc ? 'normal' : 'bold'
+                }}>
+                  {paymentMessage}
+                </div>
+              )}
             </div>
           </div>
         )}

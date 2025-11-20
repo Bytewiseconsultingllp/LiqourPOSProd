@@ -1,11 +1,11 @@
 import { useState } from "react";
 
-import { toast } from "../components/ui/use-toast";
 import { Label } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Customer } from "@/types/customer";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { toast } from "sonner";
 
 interface CreditPaymentDialogProps {
   open: boolean;

@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { X, Printer, FileText } from 'lucide-react';
-import { Button } from '@/app/dashboard/components/ui/button';
-import { ThermalBillPrint } from './ThermalBillPrint';
-import { BatchPrintSubBills } from './BatchPrintSubBills';
-import { Customer } from '@/types/customer';
-import { apiFetch } from '@/lib/api-client';
-
+import React, { useEffect, useState } from "react";
+import { X, Printer, FileText } from "lucide-react";
+import { Button } from "@/app/dashboard/components/ui/button";
+import { ThermalBillPrint } from "./ThermalBillPrint";
+import { BatchPrintSubBills } from "./BatchPrintSubBills";
+import { Customer } from "@/types/customer";
+import { apiFetch } from "@/lib/api-client";
+import QRCode from "qrcode";
+import jsPDF from "jspdf";
+import { Bill } from "@/types/bill";
 interface SubBill {
   items: any[];
   subTotalAmount: number;
@@ -19,45 +21,60 @@ interface SubBill {
   creditPaidAmount: number;
 }
 
-interface Sale {
-  _id: string;
-  totalBillId: string;
-  customerName: string;
-  customerPhone?: string;
-  subBills?: SubBill[];
-  saleDate?: string;
-  createdAt?: string;
-}
-
 interface SubBillsViewerProps {
-  sale: Sale;
+  sale: Bill;
   customer: Customer | null;
   onClose: () => void;
 }
 
-export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, onClose }) => {
+export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({
+  sale,
+  customer,
+  onClose,
+}) => {
   const [viewingSubBill, setViewingSubBill] = useState<any | null>(null);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [showBatchPrint, setShowBatchPrint] = useState(false);
-  const [qrSrc, setQrSrc] = useState<string | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  
+  const upiString = `upi://pay?pa=paytmqr5itz52@ptys&am=${sale.totalAmount}&tn=Invoice`;
+  console.log("[SubBillsViewer] UPI String:", upiString);
 
+  // Generate QR code on mount
   useEffect(() => {
     (async () => {
       try {
-        const resp = await apiFetch('/api/qrcodes');
-        if (!resp.ok) return;
-        const data = await resp.json();
-        const codes = Array.isArray(data?.data) ? data.data : [];
-        const def = codes.find((q: any) => q?.isDefault) || codes[0];
-        if (def?.imageBase64) {
-          const src = String(def.imageBase64).startsWith('data:')
-            ? def.imageBase64
-            : `data:image/png;base64,${def.imageBase64}`;
-          setQrSrc(src);
+        const dataUrl = await QRCode.toDataURL(upiString, {
+          errorCorrectionLevel: "H",
+          type: "image/png",
+          margin: 1,
+          width: 300,
+        });
+        setQrCodeDataUrl(dataUrl);
+        console.log("[SubBillsViewer] QR Code generated successfully");
+      } catch (error) {
+        console.error("[SubBillsViewer] Error generating QR code:", error);
+        // Fallback: try to fetch from API
+        try {
+          const resp = await apiFetch("/api/qrcodes");
+          if (resp.ok) {
+            const data = await resp.json();
+            const codes = Array.isArray(data?.data) ? data.data : [];
+            const def = codes.find((q: any) => q?.isDefault) || codes[0];
+            if (def?.imageBase64) {
+              const src = String(def.imageBase64).startsWith("data:")
+                ? def.imageBase64
+                : `data:image/png;base64,${def.imageBase64}`;
+              setQrCodeDataUrl(src);
+              console.log("[SubBillsViewer] Using QR code from API");
+            }
+          }
+        } catch (apiError) {
+          console.error("[SubBillsViewer] Error fetching QR from API:", apiError);
         }
-      } catch { }
+      }
     })();
-  }, []);
+  }, [upiString]);
 
   if (!sale.subBills || sale.subBills.length === 0) {
     return (
@@ -65,7 +82,10 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">Sub-Bills</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
               <X className="h-6 w-6" />
             </button>
           </div>
@@ -160,9 +180,10 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
           <div className="flex-1 overflow-y-auto p-6">
             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                <strong>Note:</strong> This bill was automatically split into{' '}
-                <strong>{sale.subBills.length} sub-bills</strong> because the total volume
-                exceeded 2.5 liters. Each sub-bill contains a maximum of 2.5L.
+                <strong>Note:</strong> This bill was automatically split into{" "}
+                <strong>{sale.subBills.length} sub-bills</strong> because the
+                total volume exceeded 2.5 liters. Each sub-bill contains a
+                maximum of 2.5L.
               </p>
             </div>
 
@@ -178,7 +199,9 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="font-bold text-lg">Sub-Bill {index + 1}</h3>
+                        <h3 className="font-bold text-lg">
+                          Sub-Bill {index + 1}
+                        </h3>
                         <p className="text-sm text-gray-600">
                           {sale.totalBillId}-SUB{index + 1}
                         </p>
@@ -194,7 +217,9 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Items:</span>
-                        <span className="font-medium">{subBill.items.length}</span>
+                        <span className="font-medium">
+                          {subBill.items.length}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Quantity:</span>
@@ -202,7 +227,9 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Volume:</span>
-                        <span className="font-medium">{(volume / 1000).toFixed(2)}L</span>
+                        <span className="font-medium">
+                          {(volume / 1000).toFixed(2)}L
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Subtotal:</span>
@@ -221,7 +248,9 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
                     </div>
 
                     <div className="border-t pt-3 mb-3">
-                      <div className="text-xs text-gray-600 mb-2">Payment Breakdown:</div>
+                      <div className="text-xs text-gray-600 mb-2">
+                        Payment Breakdown:
+                      </div>
                       <div className="space-y-1">
                         {subBill.cashPaidAmount > 0 && (
                           <div className="flex justify-between text-sm">
@@ -296,11 +325,13 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
                   {sale.subBills.reduce(
                     (sum, sb) => sum + calculateSubBillQuantity(sb),
                     0
-                  )}{' '}
-                  bottles •{' '}
+                  )}{" "}
+                  bottles •{" "}
                   {(
-                    sale.subBills.reduce((sum, sb) => sum + calculateSubBillVolume(sb), 0) /
-                    1000
+                    sale.subBills.reduce(
+                      (sum, sb) => sum + calculateSubBillVolume(sb),
+                      0
+                    ) / 1000
                   ).toFixed(2)}
                   L
                 </div>
@@ -308,10 +339,7 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
             </div>
 
             <div className="flex gap-3">
-              <Button
-                onClick={handlePrintAll}
-                className="flex-1 gap-2"
-              >
+              <Button onClick={handlePrintAll} className="flex-1 gap-2">
                 <Printer className="h-4 w-4" />
                 Print All {sale.subBills.length} Sub-Bills
               </Button>
@@ -328,6 +356,7 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
         <ThermalBillPrint
           billData={viewingSubBill}
           billType="sub"
+          qrSrc={qrCodeDataUrl}
           onClose={handleCloseSubBill}
         />
       )}
@@ -336,7 +365,7 @@ export const SubBillsViewer: React.FC<SubBillsViewerProps> = ({ sale, customer, 
       {showBatchPrint && (
         <BatchPrintSubBills
           sale={sale}
-          qrSrc={qrSrc}
+          qrSrc={qrCodeDataUrl}
           customer={customer}
           onClose={handleCloseBatchPrint}
         />

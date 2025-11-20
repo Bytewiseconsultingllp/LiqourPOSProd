@@ -44,6 +44,7 @@ export function CollectPaymentDialog({
 
   const handlePercentage = (percentage: number) => {
     const amount = (customer.outstandingBalance * percentage) / 100;
+    setOnlineAmount('0')
     setCashAmount(amount.toFixed(2));
   };
 
