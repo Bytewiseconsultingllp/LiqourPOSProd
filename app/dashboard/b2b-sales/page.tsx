@@ -140,12 +140,17 @@ const B2BSalesPage = () => {
     fetchRecentSales();
   }, []);
 
-  // Auto-select walk-in customer when customers load (only once)
-  useEffect(() => {
-    if (customers.length > 0 && !selectedCustomer) {
-      setSelectedCustomer(customers[0]);
-    }
-  }, [customers, selectedCustomer]);
+  // Removed auto-select logic - let user choose customer manually
+  // useEffect(() => {
+  //   if (customers.length > 0 && !selectedCustomer) {
+  //     setSelectedCustomer(customers[0]);
+  //   }
+  // }, [customers, selectedCustomer]);
+
+  // Helper function to round to 2 decimal places
+  const round2 = (num: number): number => {
+    return Math.round(num * 100) / 100;
+  };
 
   // Get latest purchase price for a product
   const getLatestPurchasePrice = (product: ProductDetails): number => {
@@ -184,8 +189,8 @@ const B2BSalesPage = () => {
   const handleAddToCart = (quantity: number, vendorId: string) => {
     if (!selectedProduct) return;
 
-    const purchasePrice = getLatestPurchasePrice(selectedProduct);
-    const subTotal = purchasePrice * quantity;
+    const purchasePrice = round2(getLatestPurchasePrice(selectedProduct));
+    const subTotal = round2(purchasePrice * quantity);
 
     const newItem: B2BCartItem = {
       _id: Date.now().toString(),
@@ -211,8 +216,8 @@ const B2BSalesPage = () => {
   const handleUpdateCart = (quantity: number, vendorId: string) => {
     if (!editingItem || !selectedProduct) return;
 
-    const purchasePrice = getLatestPurchasePrice(selectedProduct);
-    const subTotal = purchasePrice * quantity;
+    const purchasePrice = round2(getLatestPurchasePrice(selectedProduct));
+    const subTotal = round2(purchasePrice * quantity);
 
     setCartItems((prev) =>
       prev.map((item) =>
@@ -275,17 +280,17 @@ const B2BSalesPage = () => {
         0
       );
 
-      // Calculate subtotal (sum of all item subtotals)
-      const subTotalAmount = cartItems.reduce((sum, item) => sum + item.subTotal, 0);
+      // Calculate subtotal (sum of all item subtotals) - round to 2 decimals
+      const subTotalAmount = round2(cartItems.reduce((sum, item) => sum + item.subTotal, 0));
 
-      // Calculate VAT: 35% of subtotal
-      const vatAmount = subTotalAmount * 0.35;
+      // Calculate VAT: 35% of subtotal - round to 2 decimals
+      const vatAmount = round2(subTotalAmount * 0.35);
 
-      // Calculate TCS: 1% of (subtotal + VAT) = 1% of (subtotal * 1.35)
-      const tcsAmount = (subTotalAmount * 1.35) * 0.01;
+      // Calculate TCS: 1% of (subtotal + VAT) = 1% of (subtotal * 1.35) - round to 2 decimals
+      const tcsAmount = round2((subTotalAmount + vatAmount) * 0.01);
 
-      // Grand total
-      const totalAmount = subTotalAmount + vatAmount + tcsAmount;
+      // Grand total - round to 2 decimals
+      const totalAmount = round2(subTotalAmount + vatAmount + tcsAmount);
 
       // Prepare bill items
       const billItems = cartItems.map((item) => ({
@@ -302,8 +307,8 @@ const B2BSalesPage = () => {
         itemDiscountAmount: 0,
         promotionDiscountAmount: 0,
         finalAmount: item.finalAmount,
-        vatAmount: (item.subTotal * 0.35), // VAT per item
-        tcsAmount: ((item.subTotal * 1.35) * 0.01), // TCS per item
+        vatAmount: round2(item.subTotal * 0.35), // VAT per item - round to 2 decimals
+        tcsAmount: round2((item.subTotal * 1.35) * 0.01), // TCS per item - round to 2 decimals
       }));
 
       const billData = {
@@ -324,10 +329,10 @@ const B2BSalesPage = () => {
         saleDate: new Date(billDate).toISOString(),
         payment: {
           mode: payment.mode,
-          cashAmount: payment.cashAmount,
-          onlineAmount: payment.onlineAmount,
-          creditAmount: payment.creditAmount,
-          totalAmount: payment.totalAmount,
+          cashAmount: round2(payment.cashAmount),
+          onlineAmount: round2(payment.onlineAmount),
+          creditAmount: round2(payment.creditAmount),
+          totalAmount: round2(payment.totalAmount),
         },
         // Store VAT and TCS for reference (not saved in schema but useful for reports)
         metadata: {

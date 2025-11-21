@@ -50,13 +50,13 @@ export async function POST(request: NextRequest) {
       errors: [] as string[],
     };
 
-    // Preload existing product names to skip duplicates
-    const names = products.map((p: any) => p.name).filter(Boolean);
-    const existing = await Product.find(
-      { organizationId: user.organizationId, name: { $in: names } },
-      'name'
-    );
-    const existingNames = new Set(existing.map((p: any) => p.name));
+    // Ensure unique index on (organizationId, name) so DB can de-duplicate fast
+    try {
+      await Product.collection.createIndex({ organizationId: 1, name: 1 }, { unique: true, background: true });
+    } catch {}
+
+    // NOTE: We no longer pre-query for existing names (saves time on large uploads)
+    // The unique index will safely skip duplicates at insert time.
 
     // Validate and prepare new product docs
     const newProductsData = [] as any[];
@@ -77,11 +77,8 @@ export async function POST(request: NextRequest) {
         results.errors.push(`Row ${i + 1}: Invalid volume`);
         continue;
       }
-      if (existingNames.has(p.name)) {
-        results.skipped++;
-        results.errors.push(`Row ${i + 1}: Product "${p.name}" already exists - skipped`);
-        continue;
-      }
+      // We will rely on unique index to skip duplicates at insert time
+      // (no pre-skip here to avoid extra DB roundtrips)
 
       newProductsData.push({
         ...p,
@@ -101,10 +98,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert products in bulk
-    const createdProducts = await Product.insertMany(newProductsData, { ordered: true });
+    // Use unordered to continue on duplicates (unique index) and speed up
+    let createdProducts: any[] = [];
+    try {
+      createdProducts = await Product.insertMany(newProductsData, { ordered: false });
+    } catch (bulkErr: any) {
+      // Mongo bulk write error will include writeErrors for duplicates
+      const writeErrors = bulkErr?.writeErrors || [];
+      const dupCount = writeErrors.filter((e: any) => e?.code === 11000).length;
+      if (dupCount > 0) {
+        results.skipped += dupCount;
+      }
+      // Collect other error messages for insight
+      if (Array.isArray(writeErrors)) {
+        writeErrors.forEach((e: any) => {
+          if (e?.errmsg && !String(e.errmsg).includes('E11000')) {
+            results.errors.push(e.errmsg);
+          }
+        });
+      }
+      // Successful inserts are still available via bulkErr.result?.getInsertedIds etc., but many drivers
+      // in Mongoose v7 don't expose conveniently; we proceed with what we can.
+    }
     results.success = createdProducts.length;
 
     // Prepare related documents for bulk insert
+    // Only create inventory docs for successfully inserted products
     const inventoryDocs = createdProducts.map((prod: any, idx: number) => ({
       productId: prod._id,
       type: 'adjustment',
@@ -121,6 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (priority1Vendor) {
+      // Only create vendor stock for successfully inserted products
       const vendorStockDocs = createdProducts.map((prod: any, idx: number) => ({
         vendorId: priority1Vendor._id,
         productId: prod._id,

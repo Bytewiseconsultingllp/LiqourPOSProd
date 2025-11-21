@@ -37,17 +37,22 @@ export function B2BShoppingCart({
   const [creditAmount, setCreditAmount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Helper function to round to 2 decimal places
+  const round2 = (num: number): number => {
+    return Math.round(num * 100) / 100;
+  };
+
   const totalBottles = items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = items.reduce((sum, item) => sum + item.subTotal, 0);
+  const subtotal = round2(items.reduce((sum, item) => sum + item.subTotal, 0));
   
-  // Calculate VAT: 35% of subtotal
-  const vatAmount = subtotal * 0.35;
+  // Calculate VAT: 35% of subtotal - round to 2 decimals
+  const vatAmount = round2(subtotal * 0.35);
   
-  // Calculate TCS: 1% of (subtotal + VAT) = 1% of (subtotal * 1.35)
-  const tcsAmount = (subtotal * 1.35) * 0.01;
+  // Calculate TCS: 1% of (subtotal + VAT) - round to 2 decimals
+  const tcsAmount = round2((subtotal + vatAmount) * 0.01);
   
-  // Grand total
-  const grandTotal = subtotal + vatAmount + tcsAmount;
+  // Grand total - round to 2 decimals
+  const grandTotal = round2(subtotal + vatAmount + tcsAmount);
 
   // Calculate available credit for customer
   const availableCredit = customer
@@ -56,14 +61,14 @@ export function B2BShoppingCart({
 
   useEffect(() => {
     if (paymentMethod === "cash") {
-      setCashAmount(grandTotal);
+      setCashAmount(round2(grandTotal));
       setOnlineAmount(0);
       setCreditAmount(0);
     } else if (paymentMethod === "credit") {
       // In credit mode, initialize all to 0, then set credit to grandTotal
       setCashAmount(0);
       setOnlineAmount(0);
-      setCreditAmount(grandTotal);
+      setCreditAmount(round2(grandTotal));
     }
   }, [paymentMethod, grandTotal]);
 
@@ -72,7 +77,7 @@ export function B2BShoppingCart({
   };
 
   const handleCashChange = (value: number) => {
-    const newCash = Math.max(0, value);
+    const newCash = round2(Math.max(0, value));
     if (newCash > grandTotal) {
       toast.error(`Cash amount cannot exceed total (₹${grandTotal.toFixed(2)})`);
       return;
@@ -81,14 +86,14 @@ export function B2BShoppingCart({
     
     if (paymentMethod === "cash") {
       // Auto-adjust online to make up the difference
-      const remaining = grandTotal - newCash;
-      setOnlineAmount(Math.max(0, remaining));
+      const remaining = round2(grandTotal - newCash);
+      setOnlineAmount(round2(Math.max(0, remaining)));
     }
   };
 
   const handleOnlineChange = (value: number) => {
-    const newOnline = Math.max(0, value);
-    const maxOnline = grandTotal - cashAmount;
+    const newOnline = round2(Math.max(0, value));
+    const maxOnline = round2(grandTotal - cashAmount);
     
     if (newOnline > maxOnline) {
       toast.error(`Online amount cannot exceed ₹${maxOnline.toFixed(2)}`);
@@ -98,7 +103,7 @@ export function B2BShoppingCart({
   };
 
   const handleCreditCashChange = (value: number) => {
-    const newCash = Math.max(0, value);
+    const newCash = round2(Math.max(0, value));
     if (newCash > grandTotal) {
       toast.error(`Cash amount cannot exceed total (₹${grandTotal.toFixed(2)})`);
       return;
@@ -106,15 +111,15 @@ export function B2BShoppingCart({
     setCashAmount(newCash);
     
     // Auto-adjust credit and online
-    const remaining = grandTotal - newCash;
-    const newOnline = Math.min(onlineAmount, remaining);
+    const remaining = round2(grandTotal - newCash);
+    const newOnline = round2(Math.min(onlineAmount, remaining));
     setOnlineAmount(newOnline);
-    setCreditAmount(Math.max(0, remaining - newOnline));
+    setCreditAmount(round2(Math.max(0, remaining - newOnline)));
   };
 
   const handleCreditOnlineChange = (value: number) => {
-    const newOnline = Math.max(0, value);
-    const maxOnline = grandTotal - cashAmount;
+    const newOnline = round2(Math.max(0, value));
+    const maxOnline = round2(grandTotal - cashAmount);
     
     if (newOnline > maxOnline) {
       toast.error(`Online amount cannot exceed ₹${maxOnline.toFixed(2)}`);
@@ -123,12 +128,12 @@ export function B2BShoppingCart({
     setOnlineAmount(newOnline);
     
     // Auto-adjust credit
-    const remaining = grandTotal - cashAmount - newOnline;
-    setCreditAmount(Math.max(0, remaining));
+    const remaining = round2(grandTotal - cashAmount - newOnline);
+    setCreditAmount(round2(Math.max(0, remaining)));
   };
 
   const handleCreditAmountChange = (value: number) => {
-    const newCredit = Math.max(0, value);
+    const newCredit = round2(Math.max(0, value));
     if (newCredit > availableCredit) {
       toast.error(`Credit amount cannot exceed available credit (₹${availableCredit.toFixed(2)})`);
       return;
@@ -140,8 +145,8 @@ export function B2BShoppingCart({
     setCreditAmount(newCredit);
     
     // Auto-adjust cash
-    const remaining = grandTotal - newCredit - onlineAmount;
-    setCashAmount(Math.max(0, remaining));
+    const remaining = round2(grandTotal - newCredit - onlineAmount);
+    setCashAmount(round2(Math.max(0, remaining)));
   };
 
   const handleComplete = async () => {
