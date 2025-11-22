@@ -10,7 +10,7 @@ interface ProductFiltersProps {
   onClearFilters: () => void;
 }
 
-const volumes = [60, 90, 150, 180, 275, 330, 375, 500, 650, 750, 1000];
+const volumes = [60, 90, 150, 180, 200, 275, 330, 375, 500, 650, 750, 1000];
 const categories = ['Whisky', 'Rum', 'Vodka', 'Wine', 'Brandy', 'Gin', 'Beer', 'Tequila'];
 
 export function ProductFilters({

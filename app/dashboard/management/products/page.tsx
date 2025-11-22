@@ -105,7 +105,7 @@ export default function ProductsManagementPage() {
 
   // Dropdown options
   const categoryOptions = ['Whisky', 'Rum', 'Vodka', 'Wine', 'Brandy', 'Gin', 'Beer', 'Tequila'];
-  const volumeOptions = [60, 90, 150, 180, 275, 330, 375, 500, 650, 750, 1000];
+  const volumeOptions = [60, 90, 150, 180, 200, 275, 330, 375, 500, 650, 750, 1000];
 
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
